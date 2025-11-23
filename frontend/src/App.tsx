@@ -20,9 +20,12 @@ import StockPage from './pages/StockPage';
 import InvoiceFormPage from './pages/InvoiceFormPage';
 import PaymentFormPage from './pages/PaymentFormPage';
 import PaymentsPage from './pages/PaymentsPage';
+import PaymentDetailPage from './pages/PaymentDetailPage';
 import StockMovementFormPage from './pages/StockMovementFormPage';
+import StockMovementsPage from './pages/StockMovementsPage';
 import ReportsPage from './pages/ReportsPage';
 import AuditLogsPage from './pages/AuditLogsPage';
+import AuditLogDetailPage from './pages/AuditLogDetailPage';
 import SuppliersPage from './pages/SuppliersPage';
 import SupplierFormPage from './pages/SupplierFormPage';
 import SupplierDetailPage from './pages/SupplierDetailPage';
@@ -32,6 +35,9 @@ import UserDetailPage from './pages/UserDetailPage';
 import CompaniesPage from './pages/CompaniesPage';
 import CompanyFormPage from './pages/CompanyFormPage';
 import CompanyDetailPage from './pages/CompanyDetailPage';
+import CategoriesPage from './pages/CategoriesPage';
+import CategoryFormPage from './pages/CategoryFormPage';
+import CategoryDetailPage from './pages/CategoryDetailPage';
 import Layout from './components/Layout';
 import NotificationContainer from './components/NotificationContainer';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -69,6 +75,10 @@ function App() {
           <Route path="products/new" element={<ProtectedRoute requiredPermission="products:create"><ProductFormPage /></ProtectedRoute>} />
           <Route path="products/:id" element={<ProtectedRoute requiredPermission="products:read"><ProductDetailPage /></ProtectedRoute>} />
           <Route path="products/:id/edit" element={<ProtectedRoute requiredPermission="products:update"><ProductFormPage /></ProtectedRoute>} />
+          <Route path="categories" element={<ProtectedRoute requiredPermission="products:read"><CategoriesPage /></ProtectedRoute>} />
+          <Route path="categories/new" element={<ProtectedRoute requiredPermission="products:create"><CategoryFormPage /></ProtectedRoute>} />
+          <Route path="categories/:id" element={<ProtectedRoute requiredPermission="products:read"><CategoryDetailPage /></ProtectedRoute>} />
+          <Route path="categories/:id/edit" element={<ProtectedRoute requiredPermission="products:update"><CategoryFormPage /></ProtectedRoute>} />
           <Route path="customers" element={<ProtectedRoute requiredPermission="customers:read"><CustomersPage /></ProtectedRoute>} />
           <Route path="customers/new" element={<ProtectedRoute requiredPermission="customers:create"><CustomerFormPage /></ProtectedRoute>} />
           <Route path="customers/:id" element={<ProtectedRoute requiredPermission="customers:read"><CustomerDetailPage /></ProtectedRoute>} />
@@ -78,6 +88,7 @@ function App() {
           <Route path="warehouses/:id" element={<ProtectedRoute requiredPermission="warehouses:read"><WarehouseDetailPage /></ProtectedRoute>} />
           <Route path="warehouses/:id/edit" element={<ProtectedRoute requiredPermission="warehouses:update"><WarehouseFormPage /></ProtectedRoute>} />
           <Route path="stock" element={<ProtectedRoute requiredPermission="stockMovements:read"><StockPage /></ProtectedRoute>} />
+          <Route path="stock-movements" element={<ProtectedRoute requiredPermission="stockMovements:read"><StockMovementsPage /></ProtectedRoute>} />
           <Route path="stock-movements/new" element={<ProtectedRoute requiredPermission="stockMovements:create"><StockMovementFormPage /></ProtectedRoute>} />
           <Route path="invoices" element={<ProtectedRoute requiredPermission="invoices:read"><InvoicesPage /></ProtectedRoute>} />
           <Route path="invoices/new" element={<ProtectedRoute requiredPermission="invoices:create"><InvoiceFormPage /></ProtectedRoute>} />
@@ -85,6 +96,7 @@ function App() {
           <Route path="invoices/:id/edit" element={<ProtectedRoute requiredPermission="invoices:update"><InvoiceFormPage /></ProtectedRoute>} />
           <Route path="payments" element={<ProtectedRoute requiredPermission="payments:read"><PaymentsPage /></ProtectedRoute>} />
           <Route path="payments/new" element={<ProtectedRoute requiredPermission="payments:create"><PaymentFormPage /></ProtectedRoute>} />
+          <Route path="payments/:id" element={<ProtectedRoute requiredPermission="payments:read"><PaymentDetailPage /></ProtectedRoute>} />
           <Route path="payments/:id/edit" element={<ProtectedRoute requiredPermission="payments:update"><PaymentFormPage /></ProtectedRoute>} />
           <Route path="suppliers" element={<ProtectedRoute requiredPermission="suppliers:read"><SuppliersPage /></ProtectedRoute>} />
           <Route path="suppliers/new" element={<ProtectedRoute requiredPermission="suppliers:create"><SupplierFormPage /></ProtectedRoute>} />
@@ -92,6 +104,7 @@ function App() {
           <Route path="suppliers/:id/edit" element={<ProtectedRoute requiredPermission="suppliers:update"><SupplierFormPage /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute requiredPermission="reports:read"><ReportsPage /></ProtectedRoute>} />
           <Route path="audit-logs" element={<ProtectedRoute requiredPermission="audit:read"><AuditLogsPage /></ProtectedRoute>} />
+          <Route path="audit-logs/:id" element={<ProtectedRoute requiredPermission="audit:read"><AuditLogDetailPage /></ProtectedRoute>} />
           <Route path="users" element={<ProtectedRoute requiredPermission="users:read"><UsersPage /></ProtectedRoute>} />
           <Route path="users/new" element={<ProtectedRoute requiredPermission="users:create"><UserFormPage /></ProtectedRoute>} />
           <Route path="users/:id" element={<ProtectedRoute requiredPermission="users:read"><UserDetailPage /></ProtectedRoute>} />

@@ -36,5 +36,17 @@ export async function exportRoutes(fastify: FastifyInstance) {
     { preHandler },
     exportController.exportInvoiceToPDF.bind(exportController)
   );
+
+  fastify.get(
+    '/audit-logs/excel',
+    { preHandler },
+    exportController.exportAuditLogsToExcel.bind(exportController)
+  );
+
+  fastify.get(
+    '/stock-movements/excel',
+    { preHandler },
+    exportController.exportStockMovementsToExcel.bind(exportController)
+  );
 }
 

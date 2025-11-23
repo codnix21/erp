@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { auditService } from '../services/auditService';
 import api from '../services/api';
+import { Eye, Download } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
 
 const actionLabels: Record<string, string> = {
   CREATE: 'Создание',
@@ -18,6 +22,20 @@ const entityTypeLabels: Record<string, string> = {
   Warehouse: 'Склад',
   User: 'Пользователь',
   Company: 'Компания',
+  Category: 'Категория',
+};
+
+const entityRoutes: Record<string, (id: string) => string> = {
+  Order: (id) => `/orders/${id}`,
+  Product: (id) => `/products/${id}`,
+  Customer: (id) => `/customers/${id}`,
+  Invoice: (id) => `/invoices/${id}`,
+  Payment: (id) => `/payments/${id}`,
+  Supplier: (id) => `/suppliers/${id}`,
+  Warehouse: (id) => `/warehouses/${id}`,
+  User: (id) => `/users/${id}`,
+  Company: (id) => `/companies/${id}`,
+  Category: (id) => `/categories/${id}`,
 };
 
 export default function AuditLogsPage() {
@@ -26,18 +44,19 @@ export default function AuditLogsPage() {
   const [action, setAction] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const { error: showError } = useNotifications();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['audit-logs', page, entityType, action, startDate, endDate],
-    queryFn: async () => {
-      const params: any = { page, limit: 50 };
-      if (entityType) params.entityType = entityType;
-      if (action) params.action = action;
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
-      const response = await api.get('/audit-logs', { params });
-      return response.data;
-    },
+    queryFn: () =>
+      auditService.getAll({
+        page,
+        limit: 50,
+        entityType: entityType || undefined,
+        action: action || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      }),
   });
 
   if (isLoading) {
@@ -55,9 +74,47 @@ export default function AuditLogsPage() {
   const logs = data?.data || [];
   const meta = data?.meta || { total: 0, page: 1, limit: 50, totalPages: 0 };
 
+  const handleExport = async () => {
+    try {
+      const params: any = {};
+      if (entityType) params.entityType = entityType;
+      if (action) params.action = action;
+      if (startDate) params.startDate = startDate;
+      if (endDate) params.endDate = endDate;
+
+      const response = await api.get('/export/audit-logs/excel', {
+        params,
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `audit_logs_${Date.now()}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error: any) {
+      showError(error?.response?.data?.error?.message || 'Ошибка экспорта логов');
+    }
+  };
+
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Логи аудита</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Логи аудита</h1>
+        <button
+          onClick={handleExport}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+        >
+          <Download className="w-5 h-5" />
+          Экспорт в Excel
+        </button>
+      </div>
 
       <div className="card mb-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -76,6 +133,11 @@ export default function AuditLogsPage() {
               <option value="Customer">Клиенты</option>
               <option value="Invoice">Счета</option>
               <option value="Payment">Платежи</option>
+              <option value="Supplier">Поставщики</option>
+              <option value="Warehouse">Склады</option>
+              <option value="User">Пользователи</option>
+              <option value="Company">Компании</option>
+              <option value="Category">Категории</option>
             </select>
           </div>
           <div>
@@ -128,12 +190,13 @@ export default function AuditLogsPage() {
               <th>Тип записи</th>
               <th>ID записи</th>
               <th>IP адрес</th>
+              <th>Действия</th>
             </tr>
           </thead>
           <tbody>
             {logs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-500">
+                <td colSpan={7} className="text-center py-8 text-gray-500">
                   Логи не найдены
                 </td>
               </tr>
@@ -165,14 +228,35 @@ export default function AuditLogsPage() {
                   <td>
                     <span className="font-medium">{entityTypeLabels[log.entityType] || log.entityType}</span>
                   </td>
-                  <td className="font-mono text-xs text-gray-500" title={`ID ${entityTypeLabels[log.entityType] || log.entityType}: ${log.entityId}`}>
+                  <td className="font-mono text-xs text-gray-500">
                     {log.entityId ? (
-                      <span className="cursor-help" title={`ID ${entityTypeLabels[log.entityType] || log.entityType}: ${log.entityId}`}>
-                        {log.entityId.substring(0, 8)}...
-                      </span>
-                    ) : '-'}
+                      entityRoutes[log.entityType] ? (
+                        <Link
+                          to={entityRoutes[log.entityType](log.entityId)}
+                          className="text-primary-600 hover:underline"
+                          title={log.entityId}
+                        >
+                          {log.entityId.substring(0, 8)}...
+                        </Link>
+                      ) : (
+                        <span className="cursor-help" title={log.entityId}>
+                          {log.entityId.substring(0, 8)}...
+                        </span>
+                      )
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="text-sm text-gray-600">{log.ipAddress || '-'}</td>
+                  <td>
+                    <Link
+                      to={`/audit-logs/${log.id}`}
+                      className="text-primary-600 hover:text-primary-700"
+                      title="Просмотр деталей"
+                    >
+                      <Eye className="w-5 h-5" />
+                    </Link>
+                  </td>
                 </tr>
               ))
             )}

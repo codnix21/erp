@@ -6,7 +6,13 @@ export interface DashboardStats {
     customers: number;
     products: number;
     invoices: number;
+    suppliers: number;
+    warehouses: number;
+    payments: number;
+    pendingOrders: number;
+    unpaidInvoices: number;
     revenue: number;
+    unpaidAmount: number;
   };
   recentOrders: Array<{
     id: string;

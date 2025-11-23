@@ -4,6 +4,7 @@ import api from '../services/api';
 import { Invoice } from '../types';
 import { ArrowLeft, FileText, CheckCircle, XCircle, Plus, Download, Printer } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotifications } from '../context/NotificationContext';
 
 const statusColors: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800',
@@ -26,6 +27,7 @@ const statusLabels: Record<string, string> = {
 export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { hasPermission } = usePermissions();
+  const { error: showError } = useNotifications();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['invoice', id],
@@ -65,9 +67,8 @@ export default function InvoiceDetailPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      console.error('Export error:', error);
       const errorMessage = error?.response?.data?.error?.message || 'Ошибка экспорта PDF';
-      alert(`Не удалось экспортировать счёт: ${errorMessage}`);
+      showError(`Не удалось экспортировать счёт: ${errorMessage}`);
     }
   };
 
@@ -85,9 +86,8 @@ export default function InvoiceDetailPage() {
         };
       }
     } catch (error: any) {
-      console.error('Print error:', error);
       const errorMessage = error?.response?.data?.error?.message || 'Ошибка печати PDF';
-      alert(`Не удалось распечатать счёт: ${errorMessage}`);
+      showError(`Не удалось распечатать счёт: ${errorMessage}`);
     }
   };
   const paidPercentage = (Number(invoice.paidAmount) / Number(invoice.totalAmount)) * 100;

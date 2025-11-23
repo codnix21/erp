@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { usePermissions } from '../hooks/usePermissions';
 import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
-import { LogOut, Package, Home, FileText, Users, Warehouse, Receipt, CreditCard, Truck, BarChart3, FileBarChart, Shield, UserCog, Building2 } from 'lucide-react';
+import { LogOut, Package, Home, FileText, Users, Warehouse, Receipt, CreditCard, Truck, BarChart3, FileBarChart, Shield, UserCog, Building2, FolderTree, Menu, X } from 'lucide-react';
 
 const roleLabels: Record<string, string> = {
   Admin: 'Администратор',
@@ -13,6 +14,7 @@ const roleLabels: Record<string, string> = {
 };
 
 export default function Layout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, logout } = useAuthStore();
   const { hasPermission } = usePermissions();
   const navigate = useNavigate();
@@ -38,124 +40,175 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile menu overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed left-0 top-0 h-full w-64 bg-white shadow-lg">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-primary-600">ERP System</h1>
+      <aside
+        className={`fixed left-0 top-0 h-full w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
+      >
+        <div className="flex items-center justify-between p-4 lg:p-6 border-b">
+          <h1 className="text-xl lg:text-2xl font-bold text-primary-600">ERP System</h1>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <nav className="px-4">
+        <nav className="px-4 py-2 overflow-y-auto h-[calc(100vh-80px)]">
           <Link
             to="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            onClick={() => setSidebarOpen(false)}
+            className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
           >
-            <Home className="w-5 h-5" />
+            <Home className="w-5 h-5 flex-shrink-0" />
             <span>Главная</span>
           </Link>
           {hasPermission('orders:read') && (
             <Link
               to="/orders"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <FileText className="w-5 h-5" />
+              <FileText className="w-5 h-5 flex-shrink-0" />
               <span>Заказы</span>
             </Link>
           )}
           {hasPermission('products:read') && (
             <Link
               to="/products"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Package className="w-5 h-5" />
+              <Package className="w-5 h-5 flex-shrink-0" />
               <span>Товары</span>
+            </Link>
+          )}
+          {hasPermission('products:read') && (
+            <Link
+              to="/categories"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
+            >
+              <FolderTree className="w-5 h-5 flex-shrink-0" />
+              <span>Категории</span>
             </Link>
           )}
           {hasPermission('customers:read') && (
             <Link
               to="/customers"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Users className="w-5 h-5" />
+              <Users className="w-5 h-5 flex-shrink-0" />
               <span>Клиенты</span>
             </Link>
           )}
           {hasPermission('warehouses:read') && (
             <Link
               to="/warehouses"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Warehouse className="w-5 h-5" />
+              <Warehouse className="w-5 h-5 flex-shrink-0" />
               <span>Склады</span>
             </Link>
           )}
           {hasPermission('invoices:read') && (
             <Link
               to="/invoices"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Receipt className="w-5 h-5" />
+              <Receipt className="w-5 h-5 flex-shrink-0" />
               <span>Счета</span>
             </Link>
           )}
           {hasPermission('payments:read') && (
             <Link
               to="/payments"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <CreditCard className="w-5 h-5" />
+              <CreditCard className="w-5 h-5 flex-shrink-0" />
               <span>Платежи</span>
             </Link>
           )}
           {hasPermission('suppliers:read') && (
             <Link
               to="/suppliers"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Truck className="w-5 h-5" />
+              <Truck className="w-5 h-5 flex-shrink-0" />
               <span>Поставщики</span>
             </Link>
           )}
           {hasPermission('stockMovements:read') && (
             <Link
               to="/stock"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <BarChart3 className="w-5 h-5" />
+              <BarChart3 className="w-5 h-5 flex-shrink-0" />
               <span>Остатки</span>
+            </Link>
+          )}
+          {hasPermission('stockMovements:read') && (
+            <Link
+              to="/stock-movements"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
+            >
+              <Package className="w-5 h-5 flex-shrink-0" />
+              <span>Движения товаров</span>
             </Link>
           )}
           {hasPermission('reports:read') && (
             <Link
               to="/reports"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <FileBarChart className="w-5 h-5" />
+              <FileBarChart className="w-5 h-5 flex-shrink-0" />
               <span>Отчёты</span>
             </Link>
           )}
           {hasPermission('audit:read') && (
             <Link
               to="/audit-logs"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Shield className="w-5 h-5" />
+              <Shield className="w-5 h-5 flex-shrink-0" />
               <span>Логи аудита</span>
             </Link>
           )}
           {hasPermission('users:read') && (
             <Link
               to="/users"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <UserCog className="w-5 h-5" />
+              <UserCog className="w-5 h-5 flex-shrink-0" />
               <span>Пользователи</span>
             </Link>
           )}
           {hasPermission('users:read') && (
             <Link
               to="/companies"
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+              onClick={() => setSidebarOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors text-sm"
             >
-              <Building2 className="w-5 h-5" />
+              <Building2 className="w-5 h-5 flex-shrink-0" />
               <span>Компании</span>
             </Link>
           )}
@@ -163,35 +216,46 @@ export default function Layout() {
       </aside>
 
       {/* Main content */}
-      <div className="ml-64">
+      <div className="lg:ml-64">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="px-6 py-4 flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800">
-                {user?.companyId ? `Компания: ${companyName}` : 'Выберите компанию'}
-              </h2>
-              {user?.roles && user.roles.length > 0 && (
-                <p className="text-sm text-gray-500">
-                  Роли: {user.roles.map(role => roleLabels[role] || role).join(', ')}
-                </p>
-              )}
+        <header className="bg-white shadow-sm border-b sticky top-0 z-30">
+          <div className="px-4 lg:px-6 py-4 flex justify-between items-center">
+            <div className="flex items-center gap-4 flex-1 min-w-0">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base lg:text-lg font-semibold text-gray-800 truncate">
+                  {user?.companyId ? `Компания: ${companyName}` : 'Выберите компанию'}
+                </h2>
+                {user?.roles && user.roles.length > 0 && (
+                  <p className="text-xs lg:text-sm text-gray-500 truncate">
+                    Роли: {user.roles.map(role => roleLabels[role] || role).join(', ')}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">{user?.email}</span>
+            <div className="flex items-center gap-2 lg:gap-4 flex-shrink-0">
+              <span className="text-xs lg:text-sm text-gray-600 hidden sm:inline truncate max-w-[150px] lg:max-w-none">
+                {user?.email}
+              </span>
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-1 lg:gap-2 px-2 lg:px-4 py-2 text-xs lg:text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Выход"
               >
                 <LogOut className="w-4 h-4" />
-                Выход
+                <span className="hidden lg:inline">Выход</span>
               </button>
             </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="p-6">
+        <main className="p-4 lg:p-6">
           <Outlet />
         </main>
       </div>

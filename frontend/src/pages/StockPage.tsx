@@ -1,23 +1,26 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../services/api';
-import { Package, Warehouse, Search, Plus } from 'lucide-react';
+import { Package, Warehouse, Search, Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useNotifications } from '../context/NotificationContext';
 
 interface StockItem {
   warehouseId: string;
   warehouse: { id: string; name: string };
   productId: string;
   product: { id: string; name: string; sku?: string; unit: string };
-  quantity: number;
-  reserved: number;
-  available: number;
-  lastMovement: string;
+  quantity: number | string;
+  reserved: number | string;
+  available: number | string;
+  lastMovement: string | Date;
 }
 
 export default function StockPage() {
   const [warehouseFilter, setWarehouseFilter] = useState<string>('');
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
+  const { success, error: showError } = useNotifications();
 
   const { data: warehousesData } = useQuery({
     queryKey: ['warehouses'],
@@ -27,7 +30,7 @@ export default function StockPage() {
     },
   });
 
-  const { data: stockData, isLoading } = useQuery({
+  const { data: stockData, isLoading, error: stockError } = useQuery({
     queryKey: ['stock', warehouseFilter],
     queryFn: async () => {
       const response = await api.get('/stock', {
@@ -37,8 +40,36 @@ export default function StockPage() {
     },
   });
 
+  const recalculateMutation = useMutation({
+    mutationFn: async () => {
+      const response = await api.post('/stock/recalculate');
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['stock'] });
+      success(`Пересчитано остатков: ${data.data?.recalculated || 0}`);
+    },
+    onError: (error: any) => {
+      showError(error?.response?.data?.error?.message || 'Ошибка пересчета остатков');
+    },
+  });
+
   if (isLoading) {
     return <div className="text-center py-8">Загрузка...</div>;
+  }
+
+  if (stockError) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-red-600 mb-4">Ошибка загрузки остатков</div>
+        <button
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['stock'] })}
+          className="btn btn-secondary"
+        >
+          Попробовать снова
+        </button>
+      </div>
+    );
   }
 
   const warehouses = warehousesData?.data || [];
@@ -59,10 +90,21 @@ export default function StockPage() {
           <Package className="w-8 h-8" />
           Остатки на складах
         </h1>
-        <Link to="/stock-movements/new" className="btn btn-primary flex items-center gap-2">
-          <Plus className="w-5 h-5" />
-          Создать движение
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={() => recalculateMutation.mutate()}
+            disabled={recalculateMutation.isPending}
+            className="btn btn-secondary flex items-center gap-2"
+            title="Пересчитать остатки из движений"
+          >
+            <RefreshCw className={`w-5 h-5 ${recalculateMutation.isPending ? 'animate-spin' : ''}`} />
+            Пересчитать
+          </button>
+          <Link to="/stock-movements/new" className="btn btn-primary flex items-center gap-2">
+            <Plus className="w-5 h-5" />
+            Создать движение
+          </Link>
+        </div>
       </div>
 
       <div className="card mb-6">
@@ -118,12 +160,22 @@ export default function StockPage() {
               stock.map((item) => (
                 <tr key={`${item.warehouseId}-${item.productId}`} className="hover:bg-gray-50">
                   <td>
-                    <div className="flex items-center gap-2">
-                      <Warehouse className="w-4 h-4 text-gray-400" />
+                    <Link
+                      to={`/warehouses/${item.warehouse.id}`}
+                      className="flex items-center gap-2 text-primary-600 hover:underline"
+                    >
+                      <Warehouse className="w-4 h-4" />
                       {item.warehouse.name}
-                    </div>
+                    </Link>
                   </td>
-                  <td className="font-medium">{item.product.name}</td>
+                  <td className="font-medium">
+                    <Link
+                      to={`/products/${item.product.id}`}
+                      className="text-primary-600 hover:underline"
+                    >
+                      {item.product.name}
+                    </Link>
+                  </td>
                   <td className="font-mono text-sm">{item.product.sku || '-'}</td>
                   <td>{Number(item.quantity).toLocaleString('ru-RU')}</td>
                   <td className="text-orange-600">

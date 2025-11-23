@@ -9,6 +9,7 @@ import { warehouseService } from '../services/warehouseService';
 import { productService } from '../services/productService';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
 
 const stockMovementSchema = z.object({
   warehouseId: z.string().uuid('Выберите склад'),
@@ -25,6 +26,7 @@ type StockMovementFormData = z.infer<typeof stockMovementSchema>;
 export default function StockMovementFormPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { success } = useNotifications();
 
   const {
     register,
@@ -70,6 +72,7 @@ export default function StockMovementFormPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['stock-movements'] });
       queryClient.invalidateQueries({ queryKey: ['stock'] });
+      success('Движение товара создано');
       navigate('/stock');
     },
   });

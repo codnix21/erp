@@ -14,6 +14,9 @@ export interface Payment {
   invoice?: {
     id: string;
     invoiceNumber: string;
+    totalAmount: number | string;
+    paidAmount: number | string;
+    currency: string;
   };
 }
 

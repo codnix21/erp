@@ -23,6 +23,27 @@ const invoiceStatusLabels: Record<string, string> = {
   CANCELLED: 'Отменён',
 };
 
+// Переводы действий аудита
+const actionLabels: Record<string, string> = {
+  CREATE: 'Создание',
+  UPDATE: 'Обновление',
+  DELETE: 'Удаление',
+};
+
+// Переводы типов сущностей
+const entityTypeLabels: Record<string, string> = {
+  Order: 'Заказ',
+  Product: 'Товар',
+  Customer: 'Клиент',
+  Invoice: 'Счёт',
+  Payment: 'Платеж',
+  Supplier: 'Поставщик',
+  Warehouse: 'Склад',
+  User: 'Пользователь',
+  Company: 'Компания',
+  Category: 'Категория',
+};
+
 export class ExportService {
   async exportOrdersToExcel(
     companyId: string,
@@ -420,6 +441,176 @@ export class ExportService {
 
       doc.end();
     });
+  }
+
+  async exportAuditLogsToExcel(
+    companyId: string,
+    filters?: { entityType?: string; action?: string; startDate?: string; endDate?: string }
+  ) {
+    const where: any = { companyId };
+
+    if (filters?.entityType) where.entityType = filters.entityType;
+    if (filters?.action) where.action = filters.action;
+
+    if (filters?.startDate || filters?.endDate) {
+      where.createdAt = {};
+      if (filters.startDate) {
+        where.createdAt.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        where.createdAt.lte = new Date(filters.endDate);
+      }
+    }
+
+    const logs = await prisma.auditLog.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Логи аудита');
+
+    worksheet.columns = [
+      { header: 'Дата и время', key: 'createdAt', width: 20 },
+      { header: 'Пользователь', key: 'user', width: 25 },
+      { header: 'Действие', key: 'action', width: 15 },
+      { header: 'Тип записи', key: 'entityType', width: 20 },
+      { header: 'ID записи', key: 'entityId', width: 40 },
+      { header: 'IP адрес', key: 'ipAddress', width: 15 },
+      { header: 'User Agent', key: 'userAgent', width: 50 },
+    ];
+
+    logs.forEach((log) => {
+      const userName = log.user
+        ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || log.user.email
+        : 'Система';
+
+      worksheet.addRow({
+        createdAt: log.createdAt.toLocaleString('ru-RU'),
+        user: userName,
+        action: actionLabels[log.action] || log.action,
+        entityType: entityTypeLabels[log.entityType] || log.entityType,
+        entityId: log.entityId,
+        ipAddress: log.ipAddress || '-',
+        userAgent: log.userAgent || '-',
+      });
+    });
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
+
+    return workbook;
+  }
+
+  async exportStockMovementsToExcel(
+    companyId: string,
+    filters?: { warehouseId?: string; productId?: string; movementType?: string; dateFrom?: string; dateTo?: string }
+  ) {
+    const where: any = { companyId };
+
+    if (filters?.warehouseId) where.warehouseId = filters.warehouseId;
+    if (filters?.productId) where.productId = filters.productId;
+    if (filters?.movementType) where.movementType = filters.movementType;
+
+    if (filters?.dateFrom || filters?.dateTo) {
+      where.createdAt = {};
+      if (filters.dateFrom) {
+        where.createdAt.gte = new Date(filters.dateFrom);
+      }
+      if (filters.dateTo) {
+        where.createdAt.lte = new Date(filters.dateTo);
+      }
+    }
+
+    const movements = await prisma.stockMovement.findMany({
+      where,
+      include: {
+        warehouse: {
+          select: {
+            name: true,
+          },
+        },
+        product: {
+          select: {
+            name: true,
+            sku: true,
+            unit: true,
+          },
+        },
+        createdBy: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Движения товаров');
+
+    worksheet.columns = [
+      { header: 'Дата и время', key: 'createdAt', width: 20 },
+      { header: 'Склад', key: 'warehouse', width: 25 },
+      { header: 'Товар', key: 'product', width: 30 },
+      { header: 'Артикул', key: 'sku', width: 15 },
+      { header: 'Тип движения', key: 'movementType', width: 20 },
+      { header: 'Количество', key: 'quantity', width: 15 },
+      { header: 'Единица', key: 'unit', width: 10 },
+      { header: 'Пользователь', key: 'user', width: 25 },
+      { header: 'Примечания', key: 'notes', width: 40 },
+    ];
+
+    const movementTypeLabels: Record<string, string> = {
+      IN: 'Приход',
+      OUT: 'Расход',
+      TRANSFER: 'Перемещение',
+      ADJUSTMENT: 'Корректировка',
+      RESERVED: 'Резервирование',
+      UNRESERVED: 'Снятие резерва',
+    };
+
+    movements.forEach((movement) => {
+      const userName = movement.createdBy
+        ? `${movement.createdBy.firstName || ''} ${movement.createdBy.lastName || ''}`.trim() || movement.createdBy.email
+        : 'Система';
+
+      worksheet.addRow({
+        createdAt: movement.createdAt.toLocaleString('ru-RU'),
+        warehouse: movement.warehouse.name,
+        product: movement.product.name,
+        sku: movement.product.sku || '-',
+        movementType: movementTypeLabels[movement.movementType] || movement.movementType,
+        quantity: Number(movement.quantity),
+        unit: movement.product.unit,
+        user: userName,
+        notes: movement.notes || '-',
+      });
+    });
+
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
+
+    return workbook;
   }
 }
 

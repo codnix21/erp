@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { orderService } from '../services/orderService';
 import api from '../services/api';
 import { ArrowLeft, Download, Printer } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
 
 const statusLabels: Record<string, string> = {
   DRAFT: 'Черновик',
@@ -15,6 +16,7 @@ const statusLabels: Record<string, string> = {
 
 export default function OrderDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { error: showError } = useNotifications();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['order', id],
@@ -51,9 +53,8 @@ export default function OrderDetailPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      console.error('Export error:', error);
       const errorMessage = error?.response?.data?.error?.message || 'Ошибка экспорта PDF';
-      alert(`Не удалось экспортировать заказ: ${errorMessage}`);
+      showError(`Не удалось экспортировать заказ: ${errorMessage}`);
     }
   };
 
@@ -71,9 +72,8 @@ export default function OrderDetailPage() {
         };
       }
     } catch (error: any) {
-      console.error('Print error:', error);
       const errorMessage = error?.response?.data?.error?.message || 'Ошибка печати PDF';
-      alert(`Не удалось распечатать заказ: ${errorMessage}`);
+      showError(`Не удалось распечатать заказ: ${errorMessage}`);
     }
   };
 

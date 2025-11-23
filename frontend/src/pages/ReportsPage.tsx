@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../services/api';
 import { FileText, TrendingUp, Package, DollarSign, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useNotifications } from '../context/NotificationContext';
 
 const invoiceStatusLabels: Record<string, string> = {
   DRAFT: 'Черновик',
@@ -17,6 +18,7 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<string | null>('sales'); // По умолчанию выбираем отчёт по продажам
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const { error: showError } = useNotifications();
 
   const { data: salesReport, isLoading: salesLoading, error: salesError } = useQuery({
     queryKey: ['reports', 'sales', startDate, endDate],
@@ -105,8 +107,8 @@ export default function ReportsPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      console.error('Export error:', error);
-      alert(`Ошибка экспорта: ${error?.response?.data?.error?.message || 'Неизвестная ошибка'}`);
+      const errorMessage = error?.response?.data?.error?.message || 'Неизвестная ошибка';
+      showError(`Ошибка экспорта: ${errorMessage}`);
     }
   };
 

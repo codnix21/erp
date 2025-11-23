@@ -6,6 +6,7 @@ import api from '../services/api';
 import { Order } from '../types';
 import { Plus, Search, Download } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotifications } from '../context/NotificationContext';
 
 const statusColors: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800',
@@ -28,7 +29,9 @@ const statusLabels: Record<string, string> = {
 export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const { hasPermission } = usePermissions();
+  const { error: showError } = useNotifications();
 
   const handleExport = async () => {
     try {
@@ -44,15 +47,19 @@ export default function OrdersPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error('Export error:', error);
-      alert('Ошибка экспорта. Проверьте консоль для деталей.');
+    } catch (error: any) {
+      showError(error?.response?.data?.error?.message || 'Ошибка экспорта');
     }
   };
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['orders', page, search],
-    queryFn: () => orderService.getAll({ page, limit: 20, search: search || undefined }),
+    queryKey: ['orders', page, search, statusFilter],
+    queryFn: () => orderService.getAll({ 
+      page, 
+      limit: 20, 
+      search: search || undefined,
+      status: statusFilter || undefined,
+    }),
   });
 
   if (isLoading) {

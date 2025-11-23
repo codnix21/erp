@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productService } from '../services/productService';
+import { categoryService } from '../services/categoryService';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
@@ -51,6 +52,11 @@ export default function ProductFormPage() {
     queryKey: ['product', id],
     queryFn: () => productService.getOne(id!),
     enabled: isEdit,
+  });
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoryService.getAll(),
   });
 
   useEffect(() => {
@@ -139,6 +145,28 @@ export default function ProductFormPage() {
               rows={3}
               placeholder="Описание товара"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Категория
+            </label>
+            <select
+              {...register('categoryId', {
+                setValueAs: (v) => (v === '' ? undefined : v),
+              })}
+              className="input"
+            >
+              <option value="">Без категории</option>
+              {(categoriesData?.data || []).map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            {errors.categoryId && (
+              <p className="mt-1 text-sm text-red-600">{errors.categoryId.message}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

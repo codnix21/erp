@@ -2,15 +2,19 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { productService } from '../services/productService';
+import { categoryService } from '../services/categoryService';
 import api from '../services/api';
 import { Product } from '../types';
 import { Plus, Search, Package, Download, Upload } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotifications } from '../context/NotificationContext';
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const { hasPermission } = usePermissions();
+  const { success, error: showError } = useNotifications();
 
   const handleExport = async () => {
     try {
@@ -29,9 +33,8 @@ export default function ProductsPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      console.error('Export error:', error);
       const errorMessage = error?.response?.data?.error?.message || 'Ошибка экспорта';
-      alert(`Не удалось экспортировать товары: ${errorMessage}`);
+      showError(`Не удалось экспортировать товары: ${errorMessage}`);
     }
   };
 
@@ -46,17 +49,32 @@ export default function ProductsPage() {
       const response = await api.post('/import/products/excel', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      alert(`Импортировано: ${response.data.data.success}, ошибок: ${response.data.data.errors.length}`);
+      const successCount = response.data.data.success;
+      const errorCount = response.data.data.errors.length;
+      if (errorCount > 0) {
+        showError(`Импортировано: ${successCount}, ошибок: ${errorCount}`);
+      } else {
+        success(`Успешно импортировано: ${successCount} товаров`);
+      }
       window.location.reload();
-    } catch (error) {
-      console.error('Import error:', error);
-      alert('Ошибка импорта');
+    } catch (error: any) {
+      showError(error?.response?.data?.error?.message || 'Ошибка импорта');
     }
   };
 
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => categoryService.getAll(),
+  });
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['products', page, search],
-    queryFn: () => productService.getAll({ page, limit: 20, search: search || undefined }),
+    queryKey: ['products', page, search, categoryFilter],
+    queryFn: () => productService.getAll({ 
+      page, 
+      limit: 20, 
+      search: search || undefined,
+      categoryId: categoryFilter || undefined,
+    }),
   });
 
   if (isLoading) {
@@ -105,7 +123,7 @@ export default function ProductsPage() {
       </div>
 
       <div className="card mb-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -116,11 +134,26 @@ export default function ProductsPage() {
               className="input pl-10"
             />
           </div>
+          <div className="w-full sm:w-48">
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="input"
+            >
+              <option value="">Все категории</option>
+              {(categoriesData?.data || []).map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="card overflow-hidden">
-        <table className="table">
+      <div className="card overflow-hidden p-0">
+        <div className="overflow-x-auto">
+          <table className="table">
           <thead>
             <tr>
               <th>Артикул</th>
@@ -175,6 +208,7 @@ export default function ProductsPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {meta && meta.totalPages > 1 && (
           <div className="px-4 py-3 border-t flex justify-between items-center">

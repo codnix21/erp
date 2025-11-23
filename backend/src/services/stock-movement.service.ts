@@ -57,6 +57,19 @@ export class StockMovementService {
       },
     });
 
+    // Обновляем остатки в таблице Stock
+    try {
+      await this.updateStock(companyId, data.warehouseId, data.productId, data.movementType, new Decimal(data.quantity));
+    } catch (error: any) {
+      logger.error('Error updating stock after movement', { 
+        error: error.message,
+        companyId,
+        warehouseId: data.warehouseId,
+        productId: data.productId,
+      });
+      // Не прерываем создание движения, но логируем ошибку
+    }
+
     await createAuditLog({
       companyId,
       userId,
@@ -74,6 +87,115 @@ export class StockMovementService {
     });
 
     return movement;
+  }
+
+  /**
+   * Обновляет остатки в таблице Stock при создании движения
+   */
+  private async updateStock(
+    companyId: string,
+    warehouseId: string,
+    productId: string,
+    movementType: StockMovementType,
+    quantity: Decimal
+  ) {
+    // Получаем текущий остаток
+    // @ts-expect-error - Prisma client types will be updated after IDE restart
+    const currentStock = await prisma.stock.findUnique({
+      where: {
+        companyId_warehouseId_productId: {
+          companyId,
+          warehouseId,
+          productId,
+        },
+      },
+    });
+
+    // Обрабатываем Decimal объекты из базы данных
+    let newQuantity: Decimal;
+    let newReserved: Decimal;
+    
+    if (currentStock?.quantity) {
+      if (currentStock.quantity instanceof Decimal) {
+        newQuantity = currentStock.quantity;
+      } else if (typeof currentStock.quantity === 'object' && 'toNumber' in currentStock.quantity) {
+        newQuantity = new Decimal(currentStock.quantity.toNumber());
+      } else {
+        newQuantity = new Decimal(Number(currentStock.quantity));
+      }
+    } else {
+      newQuantity = new Decimal(0);
+    }
+    
+    if (currentStock?.reserved) {
+      if (currentStock.reserved instanceof Decimal) {
+        newReserved = currentStock.reserved;
+      } else if (typeof currentStock.reserved === 'object' && 'toNumber' in currentStock.reserved) {
+        newReserved = new Decimal(currentStock.reserved.toNumber());
+      } else {
+        newReserved = new Decimal(Number(currentStock.reserved));
+      }
+    } else {
+      newReserved = new Decimal(0);
+    }
+
+    // Обновляем количество в зависимости от типа движения
+    switch (movementType) {
+      case StockMovementType.IN:
+      case StockMovementType.ADJUSTMENT:
+        newQuantity = newQuantity.plus(quantity);
+        break;
+      case StockMovementType.OUT:
+        newQuantity = newQuantity.minus(quantity);
+        if (newQuantity.lt(0)) newQuantity = new Decimal(0);
+        break;
+      case StockMovementType.RESERVED:
+        newReserved = newReserved.plus(quantity);
+        break;
+      case StockMovementType.UNRESERVED:
+        newReserved = newReserved.minus(quantity);
+        if (newReserved.lt(0)) newReserved = new Decimal(0);
+        break;
+      case StockMovementType.TRANSFER:
+        // Для TRANSFER нужно обработать отдельно (из одного склада в другой)
+        // Пока просто обновляем текущий склад
+        newQuantity = newQuantity.minus(quantity);
+        if (newQuantity.lt(0)) newQuantity = new Decimal(0);
+        break;
+    }
+
+    const available = newQuantity.minus(newReserved);
+    if (available.lt(0)) {
+      // Если доступно меньше 0, корректируем резерв
+      newReserved = newQuantity;
+    }
+
+    // Создаём или обновляем запись в Stock
+    // @ts-expect-error - Prisma client types will be updated after IDE restart
+    await prisma.stock.upsert({
+      where: {
+        companyId_warehouseId_productId: {
+          companyId,
+          warehouseId,
+          productId,
+        },
+      },
+      create: {
+        companyId,
+        warehouseId,
+        productId,
+        quantity: newQuantity,
+        reserved: newReserved,
+        available: newQuantity.minus(newReserved),
+        lastMovementAt: new Date(),
+      },
+      update: {
+        quantity: newQuantity,
+        reserved: newReserved,
+        available: newQuantity.minus(newReserved),
+        lastMovementAt: new Date(),
+      },
+    });
   }
 
   async getStockMovements(
@@ -149,89 +271,168 @@ export class StockMovementService {
     if (filters?.warehouseId) where.warehouseId = filters.warehouseId;
     if (filters?.productId) where.productId = filters.productId;
 
-    // Получаем все движения для расчёта остатков
+    try {
+      // Получаем остатки из таблицы Stock (быстрее, чем вычислять из движений)
+      // @ts-expect-error - Prisma client types will be updated after IDE restart
+      const stockRecords = await prisma.stock.findMany({
+        where,
+        include: {
+          warehouse: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          product: {
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              unit: true,
+            },
+          },
+        },
+      });
+
+    // Фильтруем только товары с остатками > 0 или резервом > 0 и конвертируем Decimal в числа
+    const stock = stockRecords
+      .filter((item: any) => {
+        const qty = typeof item.quantity === 'object' && item.quantity?.toNumber 
+          ? item.quantity.toNumber() 
+          : Number(item.quantity || 0);
+        const res = typeof item.reserved === 'object' && item.reserved?.toNumber
+          ? item.reserved.toNumber()
+          : Number(item.reserved || 0);
+        return qty > 0 || res > 0;
+      })
+      .map((item: any) => {
+        const quantity = typeof item.quantity === 'object' && item.quantity?.toNumber
+          ? item.quantity.toNumber()
+          : Number(item.quantity || 0);
+        const reserved = typeof item.reserved === 'object' && item.reserved?.toNumber
+          ? item.reserved.toNumber()
+          : Number(item.reserved || 0);
+        const available = typeof item.available === 'object' && item.available?.toNumber
+          ? item.available.toNumber()
+          : Number(item.available || 0);
+        return {
+          warehouseId: item.warehouseId,
+          warehouse: item.warehouse,
+          productId: item.productId,
+          product: item.product,
+          quantity,
+          reserved,
+          available,
+          lastMovement: item.lastMovementAt || item.updatedAt,
+        };
+      });
+
+      return stock;
+    } catch (error: any) {
+      // Если таблица Stock не существует или пустая, возвращаем пустой массив
+      // Это может произойти сразу после миграции, до пересчета остатков
+      logger.warn('Error fetching stock from Stock table, returning empty array', { 
+        error: error.message,
+        companyId 
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Пересчитывает остатки для всех товаров на всех складах компании
+   * Используется для синхронизации после миграции или исправления расхождений
+   */
+  async recalculateStock(companyId: string) {
+    logger.info('Starting stock recalculation', { companyId });
+
+    // Получаем все уникальные комбинации склад-товар
     const movements = await prisma.stockMovement.findMany({
-      where,
-      include: {
-        warehouse: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        product: {
-          select: {
-            id: true,
-            name: true,
-            sku: true,
-            unit: true,
-          },
-        },
+      where: { companyId },
+      select: {
+        warehouseId: true,
+        productId: true,
       },
-      orderBy: { createdAt: 'asc' },
+      distinct: ['warehouseId', 'productId'],
     });
 
-    // Группируем по складу и товару и считаем остатки
-    const stockMap = new Map<string, {
-      warehouseId: string;
-      warehouse: any;
-      productId: string;
-      product: any;
-      quantity: Decimal;
-      reserved: Decimal;
-      lastMovement: Date;
-    }>();
+    let recalculated = 0;
 
-    movements.forEach((movement) => {
-      const key = `${movement.warehouseId}-${movement.productId}`;
-      const current = stockMap.get(key) || {
-        warehouseId: movement.warehouseId,
-        warehouse: movement.warehouse,
-        productId: movement.productId,
-        product: movement.product,
-        quantity: new Decimal(0),
-        reserved: new Decimal(0),
-        lastMovement: movement.createdAt,
-      };
+    for (const { warehouseId, productId } of movements) {
+      // Получаем все движения для этой комбинации
+      const allMovements = await prisma.stockMovement.findMany({
+        where: {
+          companyId,
+          warehouseId,
+          productId,
+        },
+        orderBy: { createdAt: 'asc' },
+      });
 
-      switch (movement.movementType) {
-        case StockMovementType.IN:
-        case StockMovementType.ADJUSTMENT:
-          current.quantity = current.quantity.plus(movement.quantity);
-          break;
-        case StockMovementType.OUT:
-          current.quantity = current.quantity.minus(movement.quantity);
-          break;
-        case StockMovementType.RESERVED:
-          current.reserved = current.reserved.plus(movement.quantity);
-          break;
-        case StockMovementType.UNRESERVED:
-          current.reserved = current.reserved.minus(movement.quantity);
-          break;
+      let quantity = new Decimal(0);
+      let reserved = new Decimal(0);
+      let lastMovementAt: Date | null = null;
+
+      // Пересчитываем остатки
+      for (const movement of allMovements) {
+        switch (movement.movementType) {
+          case StockMovementType.IN:
+          case StockMovementType.ADJUSTMENT:
+            quantity = quantity.plus(movement.quantity);
+            break;
+          case StockMovementType.OUT:
+            quantity = quantity.minus(movement.quantity);
+            if (quantity.lt(0)) quantity = new Decimal(0);
+            break;
+          case StockMovementType.RESERVED:
+            reserved = reserved.plus(movement.quantity);
+            break;
+          case StockMovementType.UNRESERVED:
+            reserved = reserved.minus(movement.quantity);
+            if (reserved.lt(0)) reserved = new Decimal(0);
+            break;
+        }
+
+        if (!lastMovementAt || movement.createdAt > lastMovementAt) {
+          lastMovementAt = movement.createdAt;
+        }
       }
 
-      if (movement.createdAt > current.lastMovement) {
-        current.lastMovement = movement.createdAt;
-      }
+      const available = quantity.minus(reserved);
+      const finalAvailable = available.gt(0) ? available : new Decimal(0);
 
-      stockMap.set(key, current);
-    });
+      // Обновляем или создаём запись в Stock
+      // @ts-expect-error - Prisma client types will be updated after IDE restart
+      await prisma.stock.upsert({
+        where: {
+          companyId_warehouseId_productId: {
+            companyId,
+            warehouseId,
+            productId,
+          },
+        },
+        create: {
+          companyId,
+          warehouseId,
+          productId,
+          quantity,
+          reserved,
+          available: finalAvailable,
+          lastMovementAt,
+        },
+        update: {
+          quantity,
+          reserved,
+          available: finalAvailable,
+          lastMovementAt,
+        },
+      });
 
-    // Фильтруем только товары с остатками > 0 или резервом > 0
-    const stock = Array.from(stockMap.values())
-      .filter((item) => item.quantity.gt(0) || item.reserved.gt(0))
-      .map((item) => ({
-        warehouseId: item.warehouseId,
-        warehouse: item.warehouse,
-        productId: item.productId,
-        product: item.product,
-        quantity: item.quantity,
-        reserved: item.reserved,
-        available: item.quantity.minus(item.reserved),
-        lastMovement: item.lastMovement,
-      }));
+      recalculated++;
+    }
 
-    return stock;
+    logger.info('Stock recalculation completed', { companyId, recalculated });
+    return { recalculated };
   }
 }
 

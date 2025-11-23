@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { paymentService } from '../services/paymentService';
-import { Plus, Search, CreditCard } from 'lucide-react';
+import { Plus, Search, CreditCard, Eye } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 
 const paymentMethodLabels: Record<string, string> = {
@@ -102,12 +102,22 @@ export default function PaymentsPage() {
                   </td>
                   <td>{payment.reference || '-'}</td>
                   <td>
-                    <Link
-                      to={`/payments/${payment.id}/edit`}
-                      className="text-primary-600 hover:text-primary-700 font-medium"
-                    >
-                      Редактировать
-                    </Link>
+                    <div className="flex gap-2">
+                      <Link
+                        to={`/payments/${payment.id}`}
+                        className="text-primary-600 hover:text-primary-700 font-medium"
+                      >
+                        Просмотр
+                      </Link>
+                      {hasPermission('payments:update') && (
+                        <Link
+                          to={`/payments/${payment.id}/edit`}
+                          className="text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Редактировать
+                        </Link>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))

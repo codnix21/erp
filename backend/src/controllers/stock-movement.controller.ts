@@ -87,5 +87,25 @@ export class StockMovementController {
       });
     }
   }
+
+  async recalculateStock(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const req = request as AuthenticatedRequest;
+      if (!req.user?.companyId) {
+        return reply.code(400).send({
+          success: false,
+          error: { code: 'COMPANY_REQUIRED', message: 'Company context is required' },
+        });
+      }
+      const result = await this.stockMovementService.recalculateStock(req.user.companyId);
+      reply.send({ success: true, data: result });
+    } catch (error: any) {
+      logger.error('Recalculate stock error', { error: error.message });
+      reply.code(400).send({
+        success: false,
+        error: { code: 'STOCK_RECALCULATE_FAILED', message: error.message },
+      });
+    }
+  }
 }
 

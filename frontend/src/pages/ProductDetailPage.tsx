@@ -1,7 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { productService } from '../services/productService';
-import { ArrowLeft, Edit, Trash2 } from 'lucide-react';
+import api from '../services/api';
+import { ArrowLeft, Edit, Trash2, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +18,26 @@ export default function ProductDetailPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['product', id],
     queryFn: () => productService.getOne(id!),
+    enabled: !!id,
+  });
+
+  const { data: stockData } = useQuery({
+    queryKey: ['stock', 'product', id],
+    queryFn: async () => {
+      const response = await api.get('/stock', { params: { productId: id } });
+      return response.data;
+    },
+    enabled: !!id,
+  });
+
+  const { data: movementsData } = useQuery({
+    queryKey: ['stock-movements', 'product', id],
+    queryFn: async () => {
+      const response = await api.get('/stock-movements', {
+        params: { productId: id, limit: 10 },
+      });
+      return response.data;
+    },
     enabled: !!id,
   });
 
@@ -41,6 +62,11 @@ export default function ProductDetailPage() {
   }
 
   const product = data.data;
+  const stock = stockData?.data || [];
+  const movements = movementsData?.data || [];
+
+  const totalStock = stock.reduce((sum: number, item: any) => sum + Number(item.quantity || 0), 0);
+  const totalReserved = stock.reduce((sum: number, item: any) => sum + Number(item.reserved || 0), 0);
 
   const handleDelete = () => {
     if (showDeleteConfirm) {
@@ -148,7 +174,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          <div className="card">
+          <div className="card mb-6">
             <h2 className="text-xl font-semibold mb-4">Статус</h2>
             <div>
               <span
@@ -162,8 +188,112 @@ export default function ProductDetailPage() {
               </span>
             </div>
           </div>
+
+          {!product.isService && (
+            <div className="card mb-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <Package className="w-6 h-6" />
+                Остатки на складах
+              </h2>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-600">Общий остаток</p>
+                  <p className="text-2xl font-bold text-primary-600">
+                    {totalStock.toLocaleString('ru-RU')} {product.unit}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">В резерве</p>
+                  <p className="text-xl font-medium text-orange-600">
+                    {totalReserved.toLocaleString('ru-RU')} {product.unit}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Доступно</p>
+                  <p className="text-xl font-medium text-green-600">
+                    {(totalStock - totalReserved).toLocaleString('ru-RU')} {product.unit}
+                  </p>
+                </div>
+                {stock.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm font-medium text-gray-700 mb-2">По складам:</p>
+                    <div className="space-y-2">
+                      {stock.map((item: any) => (
+                        <div key={item.warehouseId} className="flex justify-between text-sm">
+                          <Link
+                            to={`/warehouses/${item.warehouse.id}`}
+                            className="text-primary-600 hover:underline"
+                          >
+                            {item.warehouse.name}
+                          </Link>
+                          <span className="font-medium">
+                            {Number(item.quantity).toLocaleString('ru-RU')} {product.unit}
+                            {Number(item.reserved) > 0 && (
+                              <span className="text-orange-600 ml-2">
+                                (резерв: {Number(item.reserved).toLocaleString('ru-RU')})
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      {!product.isService && movements.length > 0 && (
+        <div className="card mt-6">
+          <h2 className="text-xl font-semibold mb-4">Последние движения</h2>
+          <div className="space-y-2">
+            {movements.map((movement: any) => (
+              <div
+                key={movement.id}
+                className="flex justify-between items-center p-3 border rounded-lg"
+              >
+                <div>
+                  <Link
+                    to={`/warehouses/${movement.warehouse.id}`}
+                    className="text-primary-600 hover:underline font-medium"
+                  >
+                    {movement.warehouse.name}
+                  </Link>
+                  <p className="text-sm text-gray-600">
+                    {new Date(movement.createdAt).toLocaleString('ru-RU')}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p
+                    className={`font-medium ${
+                      movement.movementType === 'IN' || movement.movementType === 'UNRESERVED'
+                        ? 'text-green-600'
+                        : movement.movementType === 'OUT' || movement.movementType === 'RESERVED'
+                        ? 'text-red-600'
+                        : 'text-gray-600'
+                    }`}
+                  >
+                    {movement.movementType === 'IN' || movement.movementType === 'UNRESERVED' ? '+' : ''}
+                    {movement.movementType === 'OUT' || movement.movementType === 'RESERVED' ? '-' : ''}
+                    {Number(movement.quantity).toLocaleString('ru-RU')} {product.unit}
+                  </p>
+                  <p className="text-sm text-gray-600">{movement.movementType}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 pt-4 border-t">
+            <Link
+              to="/stock-movements"
+              className="text-primary-600 hover:underline text-sm"
+            >
+              Просмотреть все движения →
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

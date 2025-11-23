@@ -6,6 +6,7 @@ import jwt from '@fastify/jwt';
 import rateLimit from '@fastify/rate-limit';
 import { loadEnv } from './config/env';
 import logger from './config/logger';
+import prisma from './config/database';
 import { authRoutes } from './routes/auth.routes';
 import { orderRoutes } from './routes/order.routes';
 import { productRoutes } from './routes/product.routes';
@@ -47,10 +48,18 @@ async function registerPlugins() {
   // Helmet для безопасности
   await app.register(helmet);
 
-  // Rate limiting
+  // Compression для оптимизации ответов
+  await app.register(require('@fastify/compress'));
+
+  // Rate limiting с заголовками
   await app.register(rateLimit, {
     max: 100,
     timeWindow: '1 minute',
+    addHeaders: {
+      'x-ratelimit-limit': true,
+      'x-ratelimit-remaining': true,
+      'x-ratelimit-reset': true,
+    },
   });
 
   // JWT
@@ -106,9 +115,14 @@ async function registerRoutes() {
   await app.register(roleRoutes, { prefix: '/api/v1' });
 }
 
-// Логирование всех входящих запросов
+// Генерация Request ID и логирование запросов
 app.addHook('onRequest', async (request, reply) => {
+  const requestId = request.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  (request as any).requestId = requestId;
+  reply.header('X-Request-ID', requestId);
+
   logger.info('Incoming request', {
+    requestId,
     method: request.method,
     url: request.url,
     ip: request.ip,
@@ -120,30 +134,56 @@ app.addHook('onRequest', async (request, reply) => {
   });
 });
 
-// Health check
+// Health check с проверкой БД
 app.get('/health', async (request, reply) => {
-  logger.info('Health check requested', { ip: request.ip });
-  return {
+  const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    database: 'unknown' as 'ok' | 'error' | 'unknown',
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+    },
   };
+
+  try {
+    // Проверка подключения к БД
+    await prisma.$queryRaw`SELECT 1`;
+    health.database = 'ok';
+  } catch (error) {
+    health.database = 'error';
+    health.status = 'degraded';
+    logger.error('Database health check failed', { error });
+  }
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  reply.code(statusCode).send(health);
 });
 
 // Обработка ошибок
 app.setErrorHandler((error, request, reply) => {
+  const requestId = (request as any).requestId || 'unknown';
+  const statusCode = error.statusCode || 500;
+  const isProduction = process.env.NODE_ENV === 'production';
+
   logger.error('Request error', {
+    requestId,
     error: error.message,
-    stack: error.stack,
+    stack: isProduction ? undefined : error.stack,
     url: request.url,
     method: request.method,
+    statusCode,
   });
 
-  reply.status(error.statusCode || 500).send({
+  reply.status(statusCode).send({
     success: false,
     error: {
       code: error.code || 'INTERNAL_ERROR',
-      message: error.message || 'Internal server error',
+      message: isProduction && statusCode === 500 
+        ? 'Internal server error' 
+        : error.message || 'Internal server error',
+      requestId,
     },
   });
 });
@@ -167,17 +207,26 @@ async function start() {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully');
-  await app.close();
-  process.exit(0);
-});
+async function shutdown(signal: string) {
+  logger.info(`${signal} received, shutting down gracefully`);
+  
+  try {
+    // Закрываем HTTP сервер
+    await app.close();
+    
+    // Закрываем подключение к БД
+    await prisma.$disconnect();
+    
+    logger.info('Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during shutdown', { error });
+    process.exit(1);
+  }
+}
 
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully');
-  await app.close();
-  process.exit(0);
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 // Запуск
 if (require.main === module) {

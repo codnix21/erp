@@ -147,5 +147,72 @@ export class ExportController {
       });
     }
   }
+
+  async exportAuditLogsToExcel(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const req = request as AuthenticatedRequest;
+      if (!req.user?.companyId) {
+        reply.code(400).send({
+          success: false,
+          error: { code: 'COMPANY_REQUIRED', message: 'Company context is required' },
+        });
+        return;
+      }
+      const { entityType, action, startDate, endDate } = request.query as any;
+
+      const workbook = await exportService.exportAuditLogsToExcel(req.user.companyId, {
+        entityType,
+        action,
+        startDate,
+        endDate,
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.header('Content-Disposition', `attachment; filename=audit_logs_${Date.now()}.xlsx`);
+      reply.send(buffer);
+    } catch (error: any) {
+      logger.error('Export audit logs to Excel error', { error });
+      reply.code(500).send({
+        success: false,
+        error: { code: 'EXPORT_ERROR', message: error.message || 'Failed to export audit logs' },
+      });
+    }
+  }
+
+  async exportStockMovementsToExcel(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const req = request as AuthenticatedRequest;
+      if (!req.user?.companyId) {
+        reply.code(400).send({
+          success: false,
+          error: { code: 'COMPANY_REQUIRED', message: 'Company context is required' },
+        });
+        return;
+      }
+      const { warehouseId, productId, movementType, dateFrom, dateTo } = request.query as any;
+
+      const workbook = await exportService.exportStockMovementsToExcel(req.user.companyId, {
+        warehouseId,
+        productId,
+        movementType,
+        dateFrom,
+        dateTo,
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.header('Content-Disposition', `attachment; filename=stock_movements_${Date.now()}.xlsx`);
+      reply.send(buffer);
+    } catch (error: any) {
+      logger.error('Export stock movements to Excel error', { error });
+      reply.code(500).send({
+        success: false,
+        error: { code: 'EXPORT_ERROR', message: error.message || 'Failed to export stock movements' },
+      });
+    }
+  }
 }
 

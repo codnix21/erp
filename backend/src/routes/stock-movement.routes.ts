@@ -11,5 +11,6 @@ export async function stockMovementRoutes(fastify: FastifyInstance) {
   fastify.post('/stock-movements', { preHandler }, stockMovementController.create.bind(stockMovementController));
   fastify.get('/stock-movements', { preHandler }, stockMovementController.getAll.bind(stockMovementController));
   fastify.get('/stock', { preHandler }, stockMovementController.getStock.bind(stockMovementController));
+  fastify.post('/stock/recalculate', { preHandler }, stockMovementController.recalculateStock.bind(stockMovementController));
 }
 

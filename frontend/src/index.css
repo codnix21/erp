@@ -30,7 +30,7 @@
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-md p-6;
+    @apply bg-white rounded-lg shadow-md p-4 lg:p-6;
   }
 
   .table {
@@ -38,11 +38,20 @@
   }
 
   .table th {
-    @apply px-4 py-3 text-left bg-gray-50 font-semibold text-gray-700 border-b;
+    @apply px-2 lg:px-4 py-2 lg:py-3 text-left bg-gray-50 font-semibold text-gray-700 border-b text-xs lg:text-sm;
   }
 
   .table td {
-    @apply px-4 py-3 border-b text-gray-600;
+    @apply px-2 lg:px-4 py-2 lg:py-3 border-b text-gray-600 text-xs lg:text-sm;
+  }
+
+  /* Responsive table wrapper */
+  .table-wrapper {
+    @apply overflow-x-auto -mx-4 lg:mx-0;
+  }
+
+  .table-wrapper .table {
+    @apply min-w-full;
   }
 }
 

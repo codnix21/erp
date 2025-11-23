@@ -5,7 +5,18 @@ export class DashboardService {
   async getStats(companyId: string) {
     try {
       // Выполняем все запросы параллельно для максимальной производительности
-      const [ordersCount, customersCount, productsCount, invoicesCount, completedOrders] = await Promise.all([
+      const [
+        ordersCount,
+        customersCount,
+        productsCount,
+        invoicesCount,
+        completedOrders,
+        suppliersCount,
+        warehousesCount,
+        paymentsCount,
+        pendingOrders,
+        unpaidInvoices,
+      ] = await Promise.all([
         // Количество заказов
         prisma.order.count({
           where: { companyId },
@@ -33,11 +44,54 @@ export class DashboardService {
           },
           take: 1000, // Ограничиваем для производительности
         }),
+        // Количество поставщиков
+        prisma.supplier.count({
+          where: { companyId },
+        }),
+        // Количество складов
+        prisma.warehouse.count({
+          where: { companyId },
+        }),
+        // Количество платежей
+        prisma.payment.count({
+          where: { companyId },
+        }),
+        // Заказы в работе
+        prisma.order.count({
+          where: {
+            companyId,
+            status: { in: ['PENDING', 'IN_PROGRESS'] },
+          },
+        }),
+        // Неоплаченные счета
+        prisma.invoice.count({
+          where: {
+            companyId,
+            status: { in: ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'] },
+          },
+        }),
       ]);
 
       // Расчет общей выручки
       const totalRevenue = completedOrders.reduce(
         (sum, order) => sum + Number(order.totalAmount || 0),
+        0
+      );
+
+      // Расчет суммы неоплаченных счетов
+      const unpaidInvoicesData = await prisma.invoice.findMany({
+        where: {
+          companyId,
+          status: { in: ['ISSUED', 'PARTIALLY_PAID', 'OVERDUE'] },
+        },
+        select: {
+          totalAmount: true,
+          paidAmount: true,
+        },
+      });
+
+      const unpaidAmount = unpaidInvoicesData.reduce(
+        (sum, invoice) => sum + (Number(invoice.totalAmount) - Number(invoice.paidAmount)),
         0
       );
 
@@ -74,7 +128,13 @@ export class DashboardService {
           customers: customersCount,
           products: productsCount,
           invoices: invoicesCount,
+          suppliers: suppliersCount,
+          warehouses: warehousesCount,
+          payments: paymentsCount,
+          pendingOrders,
+          unpaidInvoices,
           revenue: totalRevenue,
+          unpaidAmount,
         },
         recentOrders,
       };

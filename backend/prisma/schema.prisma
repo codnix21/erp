@@ -13,21 +13,21 @@ datasource db {
 // ============================================
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  passwordHash  String   @map("password_hash")
-  firstName     String?  @map("first_name")
-  lastName      String?  @map("last_name")
-  isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String?  @map("first_name")
+  lastName     String?  @map("last_name")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
 
   // Relations
   userCompanyRoles UserCompanyRole[]
   refreshTokens    RefreshToken[]
   auditLogs        AuditLog[]
-  createdOrders    Order[]          @relation("OrderCreator")
-  createdPayments  Payment[]        @relation("PaymentCreator")
+  createdOrders    Order[]           @relation("OrderCreator")
+  createdPayments  Payment[]         @relation("PaymentCreator")
   stockMovements   StockMovement[]
 
   @@map("users")
@@ -48,7 +48,7 @@ model RefreshToken {
 model Role {
   id          String   @id @default(uuid())
   name        String   @unique // Admin, Manager, Accountant, Warehouse
-  permissions Json     // Массив разрешений
+  permissions Json // Массив разрешений
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
@@ -83,18 +83,18 @@ model UserCompanyRole {
 // ============================================
 
 model Company {
-  id             String   @id @default(uuid())
-  name           String
-  inn            String?  @unique
-  address        String?
-  phone          String?
-  email          String?
-  defaultCurrency String  @default("RUB") @map("default_currency")
-  taxRate        Decimal  @default(20) @map("tax_rate") // НДС по умолчанию
-  settings       Json?    // Дополнительные настройки
-  isActive       Boolean  @default(true) @map("is_active")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid())
+  name            String
+  inn             String?  @unique
+  address         String?
+  phone           String?
+  email           String?
+  defaultCurrency String   @default("RUB") @map("default_currency")
+  taxRate         Decimal  @default(20) @map("tax_rate") // НДС по умолчанию
+  settings        Json? // Дополнительные настройки
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   // Relations
   userCompanyRoles UserCompanyRole[]
@@ -108,6 +108,7 @@ model Company {
   warehouses       Warehouse[]
   stockMovements   StockMovement[]
   auditLogs        AuditLog[]
+  Stock            Stock[]
 
   @@map("companies")
 }
@@ -126,9 +127,9 @@ model Category {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company  Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   products Product[]
-  parent   Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children Category[] @relation("CategoryHierarchy")
 
   @@map("categories")
@@ -138,7 +139,7 @@ model Product {
   id          String   @id @default(uuid())
   companyId   String   @map("company_id")
   name        String
-  sku         String?  // Артикул
+  sku         String? // Артикул
   description String?
   categoryId  String?  @map("category_id")
   unit        String   @default("шт") // Единица измерения
@@ -151,10 +152,11 @@ model Product {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  category      Category?      @relation(fields: [categoryId], references: [id])
-  orderItems    OrderItem[]
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  category       Category?       @relation(fields: [categoryId], references: [id])
+  orderItems     OrderItem[]
   stockMovements StockMovement[]
+  stock          Stock[]
 
   @@unique([companyId, sku])
   @@index([companyId, categoryId])
@@ -166,17 +168,17 @@ model Product {
 // ============================================
 
 model Customer {
-  id          String   @id @default(uuid())
-  companyId   String   @map("company_id")
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  taxId       String?  @map("tax_id") // ИНН
-  notes       String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  taxId     String?  @map("tax_id") // ИНН
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -187,17 +189,17 @@ model Customer {
 }
 
 model Supplier {
-  id          String   @id @default(uuid())
-  companyId   String   @map("company_id")
-  name        String
-  email       String?
-  phone       String?
-  address     String?
-  taxId       String?  @map("tax_id") // ИНН
-  notes       String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  taxId     String?  @map("tax_id") // ИНН
+  notes     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -227,12 +229,12 @@ model Order {
   updatedAt   DateTime    @updatedAt @map("updated_at")
 
   // Relations
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  customer   Customer?   @relation(fields: [customerId], references: [id])
-  supplier   Supplier?   @relation(fields: [supplierId], references: [id])
-  createdBy  User        @relation("OrderCreator", fields: [createdById], references: [id])
-  items      OrderItem[]
-  invoices   Invoice[]
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer  Customer?   @relation(fields: [customerId], references: [id])
+  supplier  Supplier?   @relation(fields: [supplierId], references: [id])
+  createdBy User        @relation("OrderCreator", fields: [createdById], references: [id])
+  items     OrderItem[]
+  invoices  Invoice[]
 
   @@index([companyId, status])
   @@index([companyId, customerId])
@@ -273,24 +275,24 @@ model OrderItem {
 // ============================================
 
 model Invoice {
-  id           String        @id @default(uuid())
-  companyId    String        @map("company_id")
-  orderId      String?       @map("order_id")
-  invoiceNumber String       @unique @map("invoice_number")
-  status       InvoiceStatus @default(DRAFT)
-  totalAmount  Decimal       @default(0) @map("total_amount")
-  paidAmount   Decimal       @default(0) @map("paid_amount")
-  currency     String        @default("RUB")
-  taxAmount    Decimal       @default(0) @map("tax_amount")
-  dueDate      DateTime?     @map("due_date")
-  issuedDate   DateTime?     @map("issued_date")
-  notes        String?
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  id            String        @id @default(uuid())
+  companyId     String        @map("company_id")
+  orderId       String?       @map("order_id")
+  invoiceNumber String        @unique @map("invoice_number")
+  status        InvoiceStatus @default(DRAFT)
+  totalAmount   Decimal       @default(0) @map("total_amount")
+  paidAmount    Decimal       @default(0) @map("paid_amount")
+  currency      String        @default("RUB")
+  taxAmount     Decimal       @default(0) @map("tax_amount")
+  dueDate       DateTime?     @map("due_date")
+  issuedDate    DateTime?     @map("issued_date")
+  notes         String?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  order    Order?   @relation(fields: [orderId], references: [id])
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  order    Order?    @relation(fields: [orderId], references: [id])
   payments Payment[]
 
   @@index([companyId, status])
@@ -315,16 +317,16 @@ model Payment {
   currency      String        @default("RUB")
   paymentMethod PaymentMethod @map("payment_method")
   paymentDate   DateTime      @map("payment_date")
-  reference     String?       // Номер платёжного документа
+  reference     String? // Номер платёжного документа
   notes         String?
   createdById   String        @map("created_by_id")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   // Relations
-  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
-  createdBy User    @relation("PaymentCreator", fields: [createdById], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id])
+  createdBy User     @relation("PaymentCreator", fields: [createdById], references: [id])
 
   @@index([companyId, paymentDate])
   @@index([invoiceId])
@@ -353,8 +355,9 @@ model Warehouse {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   stockMovements StockMovement[]
+  stock          Stock[]
 
   @@index([companyId])
   @@map("warehouses")
@@ -374,23 +377,46 @@ model StockMovement {
   createdAt     DateTime          @default(now()) @map("created_at")
 
   // Relations
-  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id])
-  product  Product   @relation(fields: [productId], references: [id])
-  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  product   Product   @relation(fields: [productId], references: [id])
+  createdBy User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([companyId, warehouseId, productId])
   @@index([companyId, movementType, createdAt])
   @@map("stock_movements")
 }
 
+model Stock {
+  id             String    @id @default(uuid())
+  companyId      String    @map("company_id")
+  warehouseId    String    @map("warehouse_id")
+  productId      String    @map("product_id")
+  quantity       Decimal   @default(0) // Текущее количество
+  reserved       Decimal   @default(0) // Зарезервировано
+  available      Decimal   @default(0) @db.Decimal(18, 2) // Доступно (quantity - reserved)
+  lastMovementAt DateTime? @map("last_movement_at") // Дата последнего движения
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, warehouseId, productId])
+  @@index([companyId, warehouseId])
+  @@index([companyId, productId])
+  @@index([companyId, warehouseId, productId])
+  @@map("stock")
+}
+
 enum StockMovementType {
-  IN          // Приход
-  OUT         // Расход
-  TRANSFER    // Перемещение между складами
-  ADJUSTMENT  // Корректировка (инвентаризация)
-  RESERVED    // Резервирование
-  UNRESERVED  // Снятие резерва
+  IN // Приход
+  OUT // Расход
+  TRANSFER // Перемещение между складами
+  ADJUSTMENT // Корректировка (инвентаризация)
+  RESERVED // Резервирование
+  UNRESERVED // Снятие резерва
 }
 
 // ============================================
@@ -401,7 +427,7 @@ model AuditLog {
   id         String   @id @default(uuid())
   companyId  String?  @map("company_id")
   userId     String?  @map("user_id")
-  action     String   // CREATE, UPDATE, DELETE
+  action     String // CREATE, UPDATE, DELETE
   entityType String   @map("entity_type") // Product, Order, Invoice и т.д.
   entityId   String   @map("entity_id")
   oldValues  Json?    @map("old_values")
@@ -419,4 +445,3 @@ model AuditLog {
   @@index([userId, createdAt])
   @@map("audit_logs")
 }
-

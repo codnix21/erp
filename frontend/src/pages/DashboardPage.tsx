@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { dashboardService } from '../services/dashboardService';
 import { Link } from 'react-router-dom';
-import { Package, Users, FileText, TrendingUp, ArrowRight, AlertCircle } from 'lucide-react';
+import { Package, Users, FileText, TrendingUp, ArrowRight, AlertCircle, Receipt, CreditCard, Truck, Warehouse, Clock, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -65,6 +65,58 @@ export default function DashboardPage() {
       color: 'text-orange-600',
       bgColor: 'bg-orange-100',
       link: '/orders',
+    },
+    {
+      title: 'Счета',
+      value: stats?.invoices || 0,
+      icon: Receipt,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-100',
+      link: '/invoices',
+    },
+    {
+      title: 'Платежи',
+      value: stats?.payments || 0,
+      icon: CreditCard,
+      color: 'text-teal-600',
+      bgColor: 'bg-teal-100',
+      link: '/payments',
+    },
+    {
+      title: 'Поставщики',
+      value: stats?.suppliers || 0,
+      icon: Truck,
+      color: 'text-cyan-600',
+      bgColor: 'bg-cyan-100',
+      link: '/suppliers',
+    },
+    {
+      title: 'Склады',
+      value: stats?.warehouses || 0,
+      icon: Warehouse,
+      color: 'text-pink-600',
+      bgColor: 'bg-pink-100',
+      link: '/warehouses',
+    },
+  ];
+
+  const alertCards = [
+    {
+      title: 'Заказы в работе',
+      value: stats?.pendingOrders || 0,
+      icon: Clock,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-100',
+      link: '/orders?status=PENDING',
+    },
+    {
+      title: 'Неоплаченные счета',
+      value: stats?.unpaidInvoices || 0,
+      icon: AlertTriangle,
+      color: 'text-red-600',
+      bgColor: 'bg-red-100',
+      link: '/invoices?status=ISSUED',
+      amount: stats?.unpaidAmount || 0,
     },
   ];
 
@@ -138,6 +190,33 @@ export default function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      {alertCards.some((card) => card.value > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {alertCards.map((alert) => (
+            <Link
+              key={alert.title}
+              to={alert.link}
+              className="card hover:shadow-lg transition-shadow border-l-4 border-yellow-500"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">{alert.title}</p>
+                  <p className="text-2xl font-bold">{alert.value}</p>
+                  {alert.amount && alert.amount > 0 && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Сумма: {alert.amount.toLocaleString('ru-RU')} ₽
+                    </p>
+                  )}
+                </div>
+                <div className={`${alert.bgColor} p-3 rounded-lg`}>
+                  <alert.icon className={`w-6 h-6 ${alert.color}`} />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">

@@ -5,6 +5,7 @@ import api from '../services/api';
 import { ApiResponse, Invoice } from '../types';
 import { Plus, Search, FileText, Download } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotifications } from '../context/NotificationContext';
 
 const statusColors: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800',
@@ -27,7 +28,9 @@ const statusLabels: Record<string, string> = {
 export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const { hasPermission } = usePermissions();
+  const { error: showError } = useNotifications();
 
   const handleExport = async () => {
     try {
@@ -46,17 +49,21 @@ export default function InvoicesPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error: any) {
-      console.error('Export error:', error);
       const errorMessage = error?.response?.data?.error?.message || 'Ошибка экспорта';
-      alert(`Не удалось экспортировать счета: ${errorMessage}`);
+      showError(`Не удалось экспортировать счета: ${errorMessage}`);
     }
   };
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['invoices', page, search],
+    queryKey: ['invoices', page, search, statusFilter],
     queryFn: async () => {
       const response = await api.get<ApiResponse<Invoice[]>>('/invoices', {
-        params: { page, limit: 20, search: search || undefined },
+        params: { 
+          page, 
+          limit: 20, 
+          search: search || undefined,
+          status: statusFilter || undefined,
+        },
       });
       return response.data;
     },
@@ -103,6 +110,21 @@ export default function InvoicesPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="input pl-10"
             />
+          </div>
+          <div className="w-48">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input"
+            >
+              <option value="">Все статусы</option>
+              <option value="DRAFT">Черновик</option>
+              <option value="ISSUED">Выставлен</option>
+              <option value="PAID">Оплачен</option>
+              <option value="PARTIALLY_PAID">Частично оплачен</option>
+              <option value="OVERDUE">Просрочен</option>
+              <option value="CANCELLED">Отменён</option>
+            </select>
           </div>
         </div>
       </div>
