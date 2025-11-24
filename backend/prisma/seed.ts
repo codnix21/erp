@@ -1,8 +1,31 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 import bcrypt from 'bcrypt';
-import { Decimal } from '@prisma/client/runtime/library';
+import dotenv from 'dotenv';
 
-const prisma = new PrismaClient();
+// Загружаем переменные окружения
+dotenv.config();
+
+const { Decimal } = Prisma;
+
+// Проверяем наличие DATABASE_URL
+if (!process.env.DATABASE_URL) {
+  console.error('❌ DATABASE_URL environment variable is not set!');
+  console.error('Please create a .env file with DATABASE_URL');
+  process.exit(1);
+}
+
+// Создаем Pool и адаптер для Prisma 7
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+});
+
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -629,7 +652,7 @@ async function main() {
         totalAmount: orders[0].totalAmount,
         paidAmount: orders[0].totalAmount,
         currency: 'RUB',
-        taxAmount: orders[0].totalAmount.mul(new Decimal(20)).div(new Decimal(120)),
+        taxAmount: new Decimal(Number(orders[0].totalAmount) * 20 / 120),
         issuedDate: new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000),
         dueDate: new Date(now.getTime() - 18 * 24 * 60 * 60 * 1000),
       },
@@ -643,7 +666,7 @@ async function main() {
         totalAmount: orders[1].totalAmount,
         paidAmount: new Decimal(30000),
         currency: 'RUB',
-        taxAmount: orders[1].totalAmount.mul(new Decimal(20)).div(new Decimal(120)),
+        taxAmount: new Decimal(Number(orders[1].totalAmount) * 20 / 120),
         issuedDate: new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000),
         dueDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
       },
@@ -657,7 +680,7 @@ async function main() {
         totalAmount: orders[2].totalAmount,
         paidAmount: new Decimal(0),
         currency: 'RUB',
-        taxAmount: orders[2].totalAmount.mul(new Decimal(20)).div(new Decimal(120)),
+        taxAmount: new Decimal(Number(orders[2].totalAmount) * 20 / 120),
         issuedDate: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
         dueDate: new Date(now.getTime() + 17 * 24 * 60 * 60 * 1000),
       },
@@ -671,7 +694,7 @@ async function main() {
         totalAmount: orders[4].totalAmount,
         paidAmount: orders[4].totalAmount,
         currency: 'RUB',
-        taxAmount: orders[4].totalAmount.mul(new Decimal(20)).div(new Decimal(120)),
+        taxAmount: new Decimal(Number(orders[4].totalAmount) * 20 / 120),
         issuedDate: new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000),
         dueDate: new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000),
       },
@@ -820,4 +843,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

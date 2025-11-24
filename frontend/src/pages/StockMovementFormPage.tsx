@@ -26,7 +26,7 @@ type StockMovementFormData = z.infer<typeof stockMovementSchema>;
 export default function StockMovementFormPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
 
   const {
     register,
@@ -74,6 +74,10 @@ export default function StockMovementFormPage() {
       queryClient.invalidateQueries({ queryKey: ['stock'] });
       success('Движение товара создано');
       navigate('/stock');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при создании движения товара';
+      showError(errorMessage);
     },
   });
 

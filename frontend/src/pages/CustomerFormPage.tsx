@@ -24,7 +24,7 @@ export default function CustomerFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -60,6 +60,10 @@ export default function CustomerFormPage() {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       success(isEdit ? 'Клиент обновлён' : 'Клиент создан');
       navigate('/customers');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении клиента';
+      showError(errorMessage);
     },
   });
 

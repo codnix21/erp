@@ -8,11 +8,12 @@ import { invoiceService } from '../services/invoiceService';
 import { orderService } from '../services/orderService';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useNotifications } from '../context/NotificationContext';
 
 const invoiceSchema = z.object({
   orderId: z.string().uuid().optional(),
-  status: z.string().default('DRAFT'),
-  currency: z.string().default('RUB'),
+  status: z.string().optional().default('DRAFT'),
+  currency: z.string().optional().default('RUB'),
   dueDate: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -23,6 +24,7 @@ export default function InvoiceFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -32,7 +34,7 @@ export default function InvoiceFormPage() {
     setValue,
     watch,
   } = useForm<InvoiceFormData>({
-    resolver: zodResolver(invoiceSchema),
+    resolver: zodResolver(invoiceSchema) as any,
     defaultValues: {
       status: 'DRAFT',
       currency: 'RUB',
@@ -56,7 +58,7 @@ export default function InvoiceFormPage() {
       setValue('status', invoice.data.status);
       setValue('currency', invoice.data.currency);
       setValue('dueDate', invoice.data.dueDate ? invoice.data.dueDate.split('T')[0] : '');
-      setValue('notes', invoice.data.notes || '');
+      setValue('notes', (invoice.data as any).notes || '');
     }
   }, [invoice, setValue]);
 
@@ -71,7 +73,12 @@ export default function InvoiceFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      success(isEdit ? 'Счёт обновлён' : 'Счёт создан');
       navigate('/invoices');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении счёта';
+      showError(errorMessage);
     },
   });
 
@@ -100,7 +107,7 @@ export default function InvoiceFormPage() {
         {isEdit ? 'Редактировать счёт' : 'Создать счёт'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

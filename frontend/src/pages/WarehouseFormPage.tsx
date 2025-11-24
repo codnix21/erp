@@ -12,7 +12,7 @@ import { useNotifications } from '../context/NotificationContext';
 const warehouseSchema = z.object({
   name: z.string().min(1, 'Название обязательно'),
   address: z.string().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional().default(true),
 });
 
 type WarehouseFormData = z.infer<typeof warehouseSchema>;
@@ -21,7 +21,7 @@ export default function WarehouseFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -30,7 +30,7 @@ export default function WarehouseFormPage() {
     formState: { errors },
     setValue,
   } = useForm<WarehouseFormData>({
-    resolver: zodResolver(warehouseSchema),
+    resolver: zodResolver(warehouseSchema) as any,
     defaultValues: {
       isActive: true,
     },
@@ -59,6 +59,10 @@ export default function WarehouseFormPage() {
       success(isEdit ? 'Склад обновлён' : 'Склад создан');
       navigate('/warehouses');
     },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении склада';
+      showError(errorMessage);
+    },
   });
 
   const onSubmit = (data: WarehouseFormData) => {
@@ -83,7 +87,7 @@ export default function WarehouseFormPage() {
         {isEdit ? 'Редактировать склад' : 'Создать склад'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

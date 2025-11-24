@@ -16,7 +16,7 @@ const supplierSchema = z.object({
   address: z.string().optional(),
   taxId: z.string().optional(),
   notes: z.string().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional().default(true),
 });
 
 type SupplierFormData = z.infer<typeof supplierSchema>;
@@ -25,7 +25,7 @@ export default function SupplierFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -34,7 +34,7 @@ export default function SupplierFormPage() {
     formState: { errors },
     setValue,
   } = useForm<SupplierFormData>({
-    resolver: zodResolver(supplierSchema),
+    resolver: zodResolver(supplierSchema) as any,
     defaultValues: {
       isActive: true,
     },
@@ -71,6 +71,10 @@ export default function SupplierFormPage() {
       success(isEdit ? 'Поставщик обновлён' : 'Поставщик создан');
       navigate('/suppliers');
     },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении поставщика';
+      showError(errorMessage);
+    },
   });
 
   const onSubmit = (data: SupplierFormData) => {
@@ -95,7 +99,7 @@ export default function SupplierFormPage() {
         {isEdit ? 'Редактировать поставщика' : 'Создать поставщика'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

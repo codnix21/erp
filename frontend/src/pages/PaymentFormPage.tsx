@@ -13,7 +13,7 @@ import { useNotifications } from '../context/NotificationContext';
 const paymentSchema = z.object({
   invoiceId: z.string().uuid().optional(),
   amount: z.number().positive('Сумма должна быть положительной'),
-  currency: z.string().default('RUB'),
+  currency: z.string().optional().default('RUB'),
   paymentMethod: z.string(),
   paymentDate: z.string().min(1, 'Дата обязательна'),
   reference: z.string().optional(),
@@ -37,7 +37,7 @@ export default function PaymentFormPage() {
     setValue,
     watch,
   } = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentSchema),
+    resolver: zodResolver(paymentSchema) as any,
     defaultValues: {
       currency: 'RUB',
       paymentMethod: 'BANK_TRANSFER',
@@ -46,7 +46,7 @@ export default function PaymentFormPage() {
     },
   });
 
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
 
   const { data: payment, isLoading } = useQuery({
     queryKey: ['payment', id],
@@ -92,6 +92,10 @@ export default function PaymentFormPage() {
       success(isEdit ? 'Платёж обновлён' : 'Платёж создан');
       navigate('/payments');
     },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении платежа';
+      showError(errorMessage);
+    },
   });
 
   const onSubmit = (data: PaymentFormData) => {
@@ -119,7 +123,7 @@ export default function PaymentFormPage() {
         {isEdit ? 'Редактировать платёж' : 'Создать платёж'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

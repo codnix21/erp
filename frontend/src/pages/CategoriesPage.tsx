@@ -4,15 +4,18 @@ import { categoryService } from '../services/categoryService';
 import { Plus, Edit, Trash2, Eye, FolderTree } from 'lucide-react';
 import { useNotifications } from '../context/NotificationContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../store/authStore';
 
 export default function CategoriesPage() {
   const queryClient = useQueryClient();
   const { success, error: showError } = useNotifications();
   const { hasPermission } = usePermissions();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoryService.getAll(),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   const deleteMutation = useMutation({
@@ -47,7 +50,19 @@ export default function CategoriesPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки категорий</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки категорий';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки категорий</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
 
   return (

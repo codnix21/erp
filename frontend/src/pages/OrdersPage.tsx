@@ -7,6 +7,7 @@ import { Order } from '../types';
 import { Plus, Search, Download } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuthStore } from '../store/authStore';
 
 const statusColors: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800',
@@ -32,6 +33,7 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const { hasPermission } = usePermissions();
   const { error: showError } = useNotifications();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const handleExport = async () => {
     try {
@@ -60,6 +62,7 @@ export default function OrdersPage() {
       search: search || undefined,
       status: statusFilter || undefined,
     }),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) {
@@ -67,8 +70,21 @@ export default function OrdersPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки заказов</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки заказов';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки заказов</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
+
 
   const orders = data?.data || [];
   const meta = data?.meta;
@@ -145,7 +161,21 @@ export default function OrdersPage() {
                   <td>
                     {order.totalAmount.toLocaleString('ru-RU')} {order.currency}
                   </td>
-                  <td>{new Date(order.createdAt).toLocaleDateString('ru-RU')}</td>
+                  <td>
+                    {(() => {
+                      try {
+                        const date = new Date(order.createdAt);
+                        if (isNaN(date.getTime())) return '-';
+                        return date.toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                        });
+                      } catch {
+                        return '-';
+                      }
+                    })()}
+                  </td>
                   <td>
                     <Link
                       to={`/orders/${order.id}`}

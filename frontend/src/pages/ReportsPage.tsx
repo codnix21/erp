@@ -4,6 +4,7 @@ import api from '../services/api';
 import { FileText, TrendingUp, Package, DollarSign, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuthStore } from '../store/authStore';
 
 const invoiceStatusLabels: Record<string, string> = {
   DRAFT: 'Черновик',
@@ -19,6 +20,7 @@ export default function ReportsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const { error: showError } = useNotifications();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data: salesReport, isLoading: salesLoading, error: salesError } = useQuery({
     queryKey: ['reports', 'sales', startDate, endDate],
@@ -27,7 +29,6 @@ export default function ReportsPage() {
       if (startDate) params.startDate = startDate;
       if (endDate) params.endDate = endDate;
       const response = await api.get('/reports/sales', { params });
-      // Проверяем структуру ответа
       if (response.data && response.data.data) {
         return response.data;
       }
@@ -37,7 +38,7 @@ export default function ReportsPage() {
       }
       return response.data;
     },
-    enabled: selectedReport === 'sales',
+    enabled: selectedReport === 'sales' && isAuthenticated && !!accessToken,
   });
 
   const { data: purchasesReport, isLoading: purchasesLoading, error: purchasesError } = useQuery({
@@ -49,7 +50,7 @@ export default function ReportsPage() {
       const response = await api.get('/reports/purchases', { params });
       return response.data;
     },
-    enabled: selectedReport === 'purchases',
+    enabled: selectedReport === 'purchases' && isAuthenticated && !!accessToken,
   });
 
   const { data: warehouseReport, isLoading: warehouseLoading, error: warehouseError } = useQuery({
@@ -58,7 +59,7 @@ export default function ReportsPage() {
       const response = await api.get('/reports/warehouse');
       return response.data;
     },
-    enabled: selectedReport === 'warehouse',
+    enabled: selectedReport === 'warehouse' && isAuthenticated && !!accessToken,
   });
 
   const { data: financialReport, isLoading: financialLoading, error: financialError } = useQuery({
@@ -70,7 +71,7 @@ export default function ReportsPage() {
       const response = await api.get('/reports/financial', { params });
       return response.data;
     },
-    enabled: selectedReport === 'financial',
+    enabled: selectedReport === 'financial' && isAuthenticated && !!accessToken,
   });
 
   const handleExport = async (type: string, format: 'excel' | 'pdf') => {

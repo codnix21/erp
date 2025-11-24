@@ -21,7 +21,7 @@ export default function CategoryFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -68,6 +68,10 @@ export default function CategoryFormPage() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       success(isEdit ? 'Категория обновлена' : 'Категория создана');
       navigate('/categories');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении категории';
+      showError(errorMessage);
     },
   });
 

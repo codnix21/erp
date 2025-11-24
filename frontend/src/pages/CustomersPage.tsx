@@ -5,15 +5,18 @@ import { customerService } from '../services/customerService';
 import { Customer } from '../types';
 import { Plus, Search, Users } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../store/authStore';
 
 export default function CustomersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const { hasPermission } = usePermissions();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['customers', page, search],
     queryFn: () => customerService.getAll({ page, limit: 20, search: search || undefined }),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) {
@@ -21,7 +24,19 @@ export default function CustomersPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки клиентов</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки клиентов';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки клиентов</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
 
   const customers = data?.data || [];

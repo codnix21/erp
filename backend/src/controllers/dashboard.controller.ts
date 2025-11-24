@@ -24,10 +24,25 @@ export class DashboardController {
 
       const stats = await dashboardService.getStats(companyId);
 
-      reply.send({
+      logger.info('Dashboard stats response', { 
+        companyId, 
+        statsKeys: Object.keys(stats || {}),
+        hasStats: !!stats,
+        statsType: typeof stats,
+      });
+
+      const response = {
         success: true,
         data: stats,
+      };
+
+      logger.info('Sending dashboard response', { 
+        responseType: typeof response,
+        responseKeys: Object.keys(response),
+        dataType: typeof response.data,
       });
+
+      reply.send(response);
     } catch (error: any) {
       logger.error('Dashboard stats error', { error });
       reply.code(500).send({

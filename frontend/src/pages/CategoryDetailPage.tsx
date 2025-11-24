@@ -130,7 +130,7 @@ export default function CategoryDetailPage() {
               <div>
                 <p className="text-sm text-gray-500">Товаров в категории</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {category.products?.length || 0}
+                  {(category as any).products?.length || 0}
                 </p>
               </div>
             </div>
@@ -164,7 +164,7 @@ export default function CategoryDetailPage() {
         </div>
       )}
 
-      {category.products && category.products.length > 0 && (
+      {(category as any).products && (category as any).products.length > 0 && (
         <div className="card mt-6">
           <h2 className="text-xl font-semibold mb-4">Товары в категории</h2>
           <div className="overflow-x-auto">
@@ -183,7 +183,7 @@ export default function CategoryDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {category.products.map((product: any) => (
+                {(category as any).products.map((product: any) => (
                   <tr key={product.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <Link

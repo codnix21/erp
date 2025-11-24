@@ -88,6 +88,7 @@ export interface Invoice {
   taxAmount: number;
   dueDate?: string;
   issuedDate?: string;
+  notes?: string;
 }
 
 export interface Payment {

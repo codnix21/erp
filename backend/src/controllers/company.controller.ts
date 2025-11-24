@@ -24,7 +24,6 @@ export class CompanyController {
 
   async getOne(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const req = request as AuthenticatedRequest;
       const { id } = request.params as { id: string };
       const company = await this.companyService.getCompany(id);
       reply.send({ success: true, data: company });

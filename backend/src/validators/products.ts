@@ -34,11 +34,11 @@ export const updateProductSchema = z.object({
 
 export const getProductsSchema = z.object({
   query: z.object({
-    page: z.string().transform(Number).default('1'),
-    limit: z.string().transform(Number).default('20'),
+    page: z.string().default('1').transform((val): number => Number(val)),
+    limit: z.string().default('20').transform((val): number => Number(val)),
     categoryId: z.string().uuid().optional(),
     search: z.string().optional(),
-    isService: z.string().transform((val) => val === 'true').optional(),
+    isService: z.string().transform((val): boolean => val === 'true').optional(),
   }),
 });
 

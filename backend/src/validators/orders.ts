@@ -44,8 +44,8 @@ export const updateOrderSchema = z.object({
 
 export const getOrdersSchema = z.object({
   query: z.object({
-    page: z.string().transform(Number).default('1'),
-    limit: z.string().transform(Number).default('20'),
+    page: z.string().default('1').transform((val): number => Number(val)),
+    limit: z.string().default('20').transform((val): number => Number(val)),
     status: z.nativeEnum(OrderStatus).optional(),
     customerId: z.string().uuid().optional(),
     supplierId: z.string().uuid().optional(),

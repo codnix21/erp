@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, Search, Building2, Trash2 } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import api from '../services/api';
+import { useNotifications } from '../context/NotificationContext';
 
 interface Company {
   id: string;
@@ -22,6 +23,7 @@ export default function CompaniesPage() {
   const [search, setSearch] = useState('');
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useNotifications();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['companies', page, search],
@@ -39,10 +41,11 @@ export default function CompaniesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      alert('Компания удалена');
+      success('Компания удалена');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error?.message || 'Ошибка при удалении компании');
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при удалении компании';
+      showError(errorMessage);
     },
   });
 
@@ -57,7 +60,19 @@ export default function CompaniesPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки компаний</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки компаний';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки компаний</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
 
   const companies = data?.data || [];

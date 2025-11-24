@@ -2,7 +2,9 @@ import prisma from '../config/database';
 import { CreateStockMovementInput, GetStockMovementsInput } from '../validators/stock-movements';
 import logger from '../config/logger';
 import { createAuditLog } from '../utils/audit';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+const Decimal = Prisma.Decimal;
+type Decimal = Prisma.Decimal;
 import { StockMovementType } from '@prisma/client';
 
 export class StockMovementService {
@@ -100,7 +102,6 @@ export class StockMovementService {
     quantity: Decimal
   ) {
     // Получаем текущий остаток
-    // @ts-expect-error - Prisma client types will be updated after IDE restart
     const currentStock = await prisma.stock.findUnique({
       where: {
         companyId_warehouseId_productId: {
@@ -118,8 +119,8 @@ export class StockMovementService {
     if (currentStock?.quantity) {
       if (currentStock.quantity instanceof Decimal) {
         newQuantity = currentStock.quantity;
-      } else if (typeof currentStock.quantity === 'object' && 'toNumber' in currentStock.quantity) {
-        newQuantity = new Decimal(currentStock.quantity.toNumber());
+      } else if (typeof currentStock.quantity === 'object' && 'toNumber' in currentStock.quantity && typeof (currentStock.quantity as any).toNumber === 'function') {
+        newQuantity = new Decimal((currentStock.quantity as any).toNumber());
       } else {
         newQuantity = new Decimal(Number(currentStock.quantity));
       }
@@ -130,8 +131,8 @@ export class StockMovementService {
     if (currentStock?.reserved) {
       if (currentStock.reserved instanceof Decimal) {
         newReserved = currentStock.reserved;
-      } else if (typeof currentStock.reserved === 'object' && 'toNumber' in currentStock.reserved) {
-        newReserved = new Decimal(currentStock.reserved.toNumber());
+      } else if (typeof currentStock.reserved === 'object' && 'toNumber' in currentStock.reserved && typeof (currentStock.reserved as any).toNumber === 'function') {
+        newReserved = new Decimal((currentStock.reserved as any).toNumber());
       } else {
         newReserved = new Decimal(Number(currentStock.reserved));
       }
@@ -171,7 +172,6 @@ export class StockMovementService {
     }
 
     // Создаём или обновляем запись в Stock
-    // @ts-expect-error - Prisma client types will be updated after IDE restart
     await prisma.stock.upsert({
       where: {
         companyId_warehouseId_productId: {
@@ -202,7 +202,7 @@ export class StockMovementService {
     companyId: string,
     page: number = 1,
     limit: number = 20,
-    filters?: GetStockMovementsInput
+    filters?: Omit<GetStockMovementsInput, 'page' | 'limit'>
   ) {
     const skip = (page - 1) * limit;
     const where: any = { companyId };
@@ -273,7 +273,6 @@ export class StockMovementService {
 
     try {
       // Получаем остатки из таблицы Stock (быстрее, чем вычислять из движений)
-      // @ts-expect-error - Prisma client types will be updated after IDE restart
       const stockRecords = await prisma.stock.findMany({
         where,
         include: {
@@ -306,14 +305,14 @@ export class StockMovementService {
         return qty > 0 || res > 0;
       })
       .map((item: any) => {
-        const quantity = typeof item.quantity === 'object' && item.quantity?.toNumber
-          ? item.quantity.toNumber()
+        const quantity = typeof item.quantity === 'object' && item.quantity && 'toNumber' in item.quantity && typeof (item.quantity as any).toNumber === 'function'
+          ? (item.quantity as any).toNumber()
           : Number(item.quantity || 0);
-        const reserved = typeof item.reserved === 'object' && item.reserved?.toNumber
-          ? item.reserved.toNumber()
+        const reserved = typeof item.reserved === 'object' && item.reserved && 'toNumber' in item.reserved && typeof (item.reserved as any).toNumber === 'function'
+          ? (item.reserved as any).toNumber()
           : Number(item.reserved || 0);
-        const available = typeof item.available === 'object' && item.available?.toNumber
-          ? item.available.toNumber()
+        const available = typeof item.available === 'object' && item.available && 'toNumber' in item.available && typeof (item.available as any).toNumber === 'function'
+          ? (item.available as any).toNumber()
           : Number(item.available || 0);
         return {
           warehouseId: item.warehouseId,
@@ -402,7 +401,6 @@ export class StockMovementService {
       const finalAvailable = available.gt(0) ? available : new Decimal(0);
 
       // Обновляем или создаём запись в Stock
-      // @ts-expect-error - Prisma client types will be updated after IDE restart
       await prisma.stock.upsert({
         where: {
           companyId_warehouseId_productId: {

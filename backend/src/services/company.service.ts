@@ -2,7 +2,8 @@ import prisma from '../config/database';
 import { CreateCompanyInput, UpdateCompanyInput } from '../validators/companies';
 import logger from '../config/logger';
 import { createAuditLog } from '../utils/audit';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+const { Decimal } = Prisma;
 
 export class CompanyService {
   async createCompany(data: CreateCompanyInput, userId: string) {

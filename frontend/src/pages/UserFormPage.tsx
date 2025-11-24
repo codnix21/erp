@@ -10,6 +10,7 @@ import { ArrowLeft, Save, Plus, X } from 'lucide-react';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotifications } from '../context/NotificationContext';
 
 const roleLabels: Record<string, string> = {
   Admin: 'Администратор',
@@ -25,7 +26,7 @@ const userSchema = z.object({
   lastName: z.string().optional(),
   companyId: z.string().uuid('Выберите компанию'),
   roleId: z.string().uuid('Выберите роль'),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional().default(true),
 });
 
 type UserFormData = z.infer<typeof userSchema>;
@@ -34,6 +35,7 @@ export default function UserFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useNotifications();
   const { user: currentUser } = useAuthStore();
   const { hasPermission } = usePermissions();
   const isEdit = !!id;
@@ -47,7 +49,7 @@ export default function UserFormPage() {
     setValue,
     watch,
   } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
+    resolver: zodResolver(userSchema) as any,
     defaultValues: {
       isActive: true,
     },
@@ -119,8 +121,12 @@ export default function UserFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      alert(isEdit ? 'Пользователь обновлён' : 'Пользователь создан');
+      success(isEdit ? 'Пользователь обновлён' : 'Пользователь создан');
       navigate('/users');
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении пользователя';
+      showError(errorMessage);
     },
   });
 
@@ -135,10 +141,11 @@ export default function UserFormPage() {
       queryClient.invalidateQueries({ queryKey: ['user', id] });
       setNewRoleCompanyId('');
       setNewRoleId('');
-      alert('Роль назначена');
+      success('Роль назначена');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error?.message || 'Ошибка при назначении роли');
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при назначении роли';
+      showError(errorMessage);
     },
   });
 
@@ -148,10 +155,11 @@ export default function UserFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user', id] });
-      alert('Роль удалена');
+      success('Роль удалена');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error?.message || 'Ошибка при удалении роли');
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при удалении роли';
+      showError(errorMessage);
     },
   });
 
@@ -190,7 +198,7 @@ export default function UserFormPage() {
         {isEdit ? 'Редактировать пользователя' : 'Создать пользователя'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>

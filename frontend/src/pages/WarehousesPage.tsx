@@ -5,6 +5,7 @@ import api from '../services/api';
 import { ApiResponse } from '../types';
 import { Plus, Search, Warehouse } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../store/authStore';
 
 interface Warehouse {
   id: string;
@@ -17,6 +18,7 @@ export default function WarehousesPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const { hasPermission } = usePermissions();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['warehouses', page, search],
@@ -26,12 +28,27 @@ export default function WarehousesPage() {
       });
       return response.data;
     },
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) return <div className="text-center py-8">Загрузка...</div>;
-  if (error) return <div className="text-center py-8 text-red-600">Ошибка загрузки складов</div>;
+  if (error) {
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки складов';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки складов</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
+  }
 
-  const warehouses = data?.data || [];
+  const warehouses = (data?.success ? data.data : data?.data) || [];
   const meta = data?.meta;
 
   return (

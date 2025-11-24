@@ -8,6 +8,7 @@ import { Product } from '../types';
 import { Plus, Search, Package, Download, Upload } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuthStore } from '../store/authStore';
 
 export default function ProductsPage() {
   const [page, setPage] = useState(1);
@@ -15,6 +16,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const { hasPermission } = usePermissions();
   const { success, error: showError } = useNotifications();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const handleExport = async () => {
     try {
@@ -65,6 +67,7 @@ export default function ProductsPage() {
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: () => categoryService.getAll(),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   const { data, isLoading, error } = useQuery({
@@ -75,6 +78,7 @@ export default function ProductsPage() {
       search: search || undefined,
       categoryId: categoryFilter || undefined,
     }),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) {
@@ -82,11 +86,55 @@ export default function ProductsPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки товаров</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки товаров';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки товаров</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
+
 
   const products = data?.data || [];
   const meta = data?.meta;
+
+  // Если данных нет, показываем сообщение
+  if (!isLoading && products.length === 0) {
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Package className="w-8 h-8" />
+            Товары
+          </h1>
+          {hasPermission('products:create') && (
+            <Link to="/products/new" className="btn btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Добавить товар
+            </Link>
+          )}
+        </div>
+        <div className="card text-center py-12">
+          <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">Товары не найдены</h2>
+          <p className="text-gray-500 mb-4">В системе пока нет товаров. Создайте первый товар.</p>
+          {hasPermission('products:create') && (
+            <Link to="/products/new" className="btn btn-primary inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              Создать товар
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

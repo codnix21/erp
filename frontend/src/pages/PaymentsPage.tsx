@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { paymentService } from '../services/paymentService';
 import { Plus, Search, CreditCard, Eye } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../store/authStore';
 
 const paymentMethodLabels: Record<string, string> = {
   CASH: 'Наличные',
@@ -17,16 +18,32 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const { hasPermission } = usePermissions();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['payments', page, search],
     queryFn: () => paymentService.getAll({ page, limit: 20 }),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) return <div className="text-center py-8">Загрузка...</div>;
-  if (error) return <div className="text-center py-8 text-red-600">Ошибка загрузки платежей</div>;
+  if (error) {
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки платежей';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки платежей</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
+  }
 
-  const payments = data?.data || [];
+  const payments = (data?.success ? data.data : data?.data) || [];
   const meta = data?.meta;
 
   return (
@@ -80,9 +97,50 @@ export default function PaymentsPage() {
                 </td>
               </tr>
             ) : (
-              payments.map((payment) => (
-                <tr key={payment.id} className="hover:bg-gray-50">
-                  <td>{new Date(payment.paymentDate).toLocaleDateString('ru-RU')}</td>
+              payments.map((payment) => {
+                const formatDate = (dateValue: any) => {
+                  if (dateValue === null || dateValue === undefined || dateValue === '') {
+                    return '-';
+                  }
+                  
+                  try {
+                    let date: Date;
+                    
+                    if (dateValue instanceof Date) {
+                      date = dateValue;
+                    } else if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+                      date = new Date(dateValue);
+                    } else if (dateValue && typeof dateValue === 'object') {
+                      if ('getTime' in dateValue && typeof dateValue.getTime === 'function') {
+                        date = new Date(dateValue);
+                      } else if ('$date' in dateValue) {
+                        date = new Date(dateValue.$date);
+                      } else if ('valueOf' in dateValue && typeof dateValue.valueOf === 'function') {
+                        date = new Date(dateValue.valueOf());
+                      } else {
+                        return '-';
+                      }
+                    } else {
+                      return '-';
+                    }
+                    
+                    if (isNaN(date.getTime())) {
+                      return '-';
+                    }
+                    
+                    return date.toLocaleDateString('ru-RU', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                    });
+                  } catch {
+                    return '-';
+                  }
+                };
+
+                return (
+                  <tr key={payment.id} className="hover:bg-gray-50">
+                    <td>{formatDate(payment.paymentDate)}</td>
                   <td className="font-medium">
                     {Number(payment.amount).toLocaleString('ru-RU')} {payment.currency}
                   </td>
@@ -120,7 +178,8 @@ export default function PaymentsPage() {
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

@@ -1,4 +1,5 @@
-import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+const { Decimal } = Prisma;
 import prisma from '../config/database';
 import { CreateOrderInput, UpdateOrderInput } from '../validators/orders';
 import logger from '../config/logger';

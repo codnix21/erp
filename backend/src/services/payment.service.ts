@@ -3,7 +3,8 @@ import { CreatePaymentInput, UpdatePaymentInput } from '../validators/payments';
 import logger from '../config/logger';
 import { createAuditLog } from '../utils/audit';
 import { emailService } from './email.service';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+const { Decimal } = Prisma;
 import { InvoiceStatus } from '@prisma/client';
 
 export class PaymentService {

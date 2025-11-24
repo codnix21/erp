@@ -4,21 +4,38 @@ import { Link } from 'react-router-dom';
 import { supplierService } from '../services/supplierService';
 import { Plus, Search, Truck } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
+import { useAuthStore } from '../store/authStore';
 
 export default function SuppliersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const { hasPermission } = usePermissions();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['suppliers', page, search],
     queryFn: () => supplierService.getAll({ page, limit: 20, search: search || undefined }),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) return <div className="text-center py-8">Загрузка...</div>;
-  if (error) return <div className="text-center py-8 text-red-600">Ошибка загрузки поставщиков</div>;
+  if (error) {
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки поставщиков';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки поставщиков</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
+  }
 
-  const suppliers = data?.data || [];
+  const suppliers = (data?.success ? data.data : data?.data) || [];
   const meta = data?.meta;
 
   return (

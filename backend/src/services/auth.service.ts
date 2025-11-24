@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { FastifyInstance } from 'fastify';
+import jwt from 'jsonwebtoken';
 import prisma from '../config/database';
 import { JWTPayload, RefreshTokenPayload } from '../types/auth';
 import logger from '../config/logger';
@@ -120,10 +121,8 @@ export class AuthService {
 
   async refreshToken(refreshToken: string) {
     try {
-      // Верификация refresh token
-      const decoded = this.fastify.jwt.verify<RefreshTokenPayload>(refreshToken, {
-        secret: getEnv().JWT_REFRESH_SECRET,
-      });
+      // Верификация refresh token с кастомным secret
+      jwt.verify(refreshToken, getEnv().JWT_REFRESH_SECRET) as RefreshTokenPayload;
 
       // Проверка существования токена в БД
       const tokenRecord = await prisma.refreshToken.findUnique({
@@ -149,9 +148,11 @@ export class AuthService {
         });
       } catch (deleteError: any) {
         // Игнорируем ошибку P2025 (Record to delete does not exist) - это может произойти при race condition
-        if (deleteError?.code !== 'P2025') {
+        // Также игнорируем ошибки, если запись уже была удалена другим запросом
+        if (deleteError?.code !== 'P2025' && deleteError?.meta?.cause !== 'Record to delete does not exist') {
           logger.warn('Error deleting refresh token', { error: deleteError });
         }
+        // Продолжаем выполнение даже если удаление не удалось
       }
 
       return tokens;
@@ -201,9 +202,14 @@ export class AuthService {
       expiresIn: getEnv().JWT_EXPIRES_IN,
     });
 
-    const refreshToken = this.fastify.jwt.sign(refreshPayload, {
-      expiresIn: getEnv().JWT_REFRESH_EXPIRES_IN,
-    });
+    // Используем jsonwebtoken для refresh token с отдельным secret
+    const refreshToken = jwt.sign(
+      refreshPayload,
+      getEnv().JWT_REFRESH_SECRET,
+      {
+        expiresIn: getEnv().JWT_REFRESH_EXPIRES_IN,
+      } as jwt.SignOptions
+    );
 
     // Сохранение refresh token в БД
     await prisma.refreshToken.create({

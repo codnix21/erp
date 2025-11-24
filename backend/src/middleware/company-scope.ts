@@ -1,6 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { AuthenticatedRequest } from '../types/auth';
-import prisma from '../config/database';
 
 /**
  * Middleware для автоматической фильтрации по company_id
@@ -8,7 +7,7 @@ import prisma from '../config/database';
  */
 export async function companyScope(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   const req = request as AuthenticatedRequest;
   

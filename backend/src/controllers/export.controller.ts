@@ -97,6 +97,7 @@ export class ExportController {
   }
 
   async exportOrderToPDF(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
     try {
       const req = request as AuthenticatedRequest;
       if (!req.user?.companyId) {
@@ -106,7 +107,6 @@ export class ExportController {
         });
         return;
       }
-      const { id } = request.params as { id: string };
 
       const buffer = await exportService.exportOrderToPDF(id, req.user.companyId);
 
@@ -123,6 +123,7 @@ export class ExportController {
   }
 
   async exportInvoiceToPDF(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = request.params as { id: string };
     try {
       const req = request as AuthenticatedRequest;
       if (!req.user?.companyId) {
@@ -132,7 +133,6 @@ export class ExportController {
         });
         return;
       }
-      const { id } = request.params as { id: string };
 
       const buffer = await exportService.exportInvoiceToPDF(id, req.user.companyId);
 

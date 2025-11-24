@@ -23,8 +23,8 @@ export const updateInvoiceSchema = z.object({
 
 export const getInvoicesSchema = z.object({
   query: z.object({
-    page: z.string().transform(Number).default('1'),
-    limit: z.string().transform(Number).default('20'),
+    page: z.string().default('1').transform((val): number => Number(val)),
+    limit: z.string().default('20').transform((val): number => Number(val)),
     status: z.nativeEnum(InvoiceStatus).optional(),
     orderId: z.string().uuid().optional(),
     search: z.string().optional(),

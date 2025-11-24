@@ -5,6 +5,7 @@ import api from '../services/api';
 import { Plus, Search, Package, Warehouse, ArrowUp, ArrowDown, RotateCcw, Lock, Unlock, Download } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuthStore } from '../store/authStore';
 
 const movementTypeLabels: Record<string, string> = {
   IN: 'Приход',
@@ -42,6 +43,7 @@ export default function StockMovementsPage() {
   const [endDate, setEndDate] = useState('');
   const { hasPermission } = usePermissions();
   const { error: showError } = useNotifications();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data: warehousesData } = useQuery({
     queryKey: ['warehouses'],
@@ -49,6 +51,7 @@ export default function StockMovementsPage() {
       const response = await api.get('/warehouses', { params: { limit: 100 } });
       return response.data;
     },
+    enabled: isAuthenticated && !!accessToken,
   });
 
   const { data: productsData } = useQuery({
@@ -57,6 +60,7 @@ export default function StockMovementsPage() {
       const response = await api.get('/products', { params: { page: 1, limit: 100 } });
       return response.data;
     },
+    enabled: isAuthenticated && !!accessToken,
   });
 
   const { data, isLoading, error } = useQuery({
@@ -71,6 +75,7 @@ export default function StockMovementsPage() {
       const response = await api.get('/stock-movements', { params });
       return response.data;
     },
+    enabled: isAuthenticated && !!accessToken,
   });
 
   if (isLoading) {
@@ -78,13 +83,25 @@ export default function StockMovementsPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки движений</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки движений';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки движений</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
 
-  const movements = data?.data || [];
+  const movements = (data?.success ? data.data : data?.data) || [];
   const meta = data?.meta || { total: 0, page: 1, limit: 50, totalPages: 0 };
-  const warehouses = warehousesData?.data || [];
-  const products = productsData?.data || [];
+  const warehouses = (warehousesData?.success ? warehousesData.data : warehousesData?.data) || [];
+  const products = (productsData?.success ? productsData.data : productsData?.data) || [];
 
   const handleExport = async () => {
     try {

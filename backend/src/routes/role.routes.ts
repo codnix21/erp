@@ -6,7 +6,7 @@ export default async function roleRoutes(fastify: FastifyInstance) {
   // Только админы могут просматривать роли
   const preHandler = [authenticate, requireAuth, requireRole('Admin')];
 
-  fastify.get('/roles', { preHandler }, async (request, reply) => {
+  fastify.get('/roles', { preHandler }, async (_request, reply) => {
     try {
       const roles = await prisma.role.findMany({
         orderBy: { name: 'asc' },

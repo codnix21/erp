@@ -201,11 +201,27 @@ export default function AuditLogsPage() {
                 </td>
               </tr>
             ) : (
-              logs.map((log: any) => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td>
-                    {new Date(log.createdAt).toLocaleString('ru-RU')}
-                  </td>
+              logs.map((log: any) => {
+                const formatDateTime = (dateString: string | Date | null | undefined) => {
+                  if (!dateString) return '-';
+                  try {
+                    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+                    if (isNaN(date.getTime())) return '-';
+                    return date.toLocaleString('ru-RU', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    });
+                  } catch {
+                    return '-';
+                  }
+                };
+
+                return (
+                  <tr key={log.id} className="hover:bg-gray-50">
+                    <td>{formatDateTime(log.createdAt)}</td>
                   <td>
                     {log.user
                       ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() ||
@@ -258,7 +274,8 @@ export default function AuditLogsPage() {
                     </Link>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>

@@ -1,9 +1,8 @@
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
-import { Response } from 'fastify';
+import { OrderStatus, InvoiceStatus } from '@prisma/client';
 import prisma from '../config/database';
 import fs from 'fs';
-import path from 'path';
 
 // Переводы статусов заказов
 const orderStatusLabels: Record<string, string> = {
@@ -52,7 +51,7 @@ export class ExportService {
     const orders = await prisma.order.findMany({
       where: {
         companyId,
-        ...(filters?.status && { status: filters.status }),
+        ...(filters?.status && { status: filters.status as OrderStatus }),
         ...(filters?.startDate && {
           createdAt: { gte: new Date(filters.startDate) },
         }),
@@ -86,7 +85,7 @@ export class ExportService {
     ];
 
     // Данные
-    orders.forEach((order) => {
+    orders.forEach((order: any) => {
       worksheet.addRow({
         orderNumber: order.orderNumber,
         createdAt: order.createdAt.toLocaleDateString('ru-RU'),
@@ -161,7 +160,7 @@ export class ExportService {
     const invoices = await prisma.invoice.findMany({
       where: {
         companyId,
-        ...(filters?.status && { status: filters.status }),
+        ...(filters?.status && { status: filters.status as InvoiceStatus }),
         ...(filters?.startDate && {
           issuedDate: { gte: new Date(filters.startDate) },
         }),
@@ -241,7 +240,7 @@ export class ExportService {
       const doc = new PDFDocument({ margin: 50 });
       const chunks: Buffer[] = [];
 
-      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 
@@ -372,7 +371,7 @@ export class ExportService {
       const doc = new PDFDocument({ margin: 50 });
       const chunks: Buffer[] = [];
 
-      doc.on('data', (chunk) => chunks.push(chunk));
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
       doc.on('end', () => resolve(Buffer.concat(chunks)));
       doc.on('error', reject);
 

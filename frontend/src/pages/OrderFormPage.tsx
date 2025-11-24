@@ -15,14 +15,14 @@ const orderItemSchema = z.object({
   productId: z.string().uuid('Выберите товар'),
   quantity: z.number().positive('Количество должно быть больше 0'),
   price: z.number().min(0, 'Цена должна быть положительной'),
-  taxRate: z.number().min(0).max(100).default(20),
+  taxRate: z.number().min(0).max(100).optional().default(20),
 });
 
 const orderSchema = z.object({
   customerId: z.string().uuid().optional(),
   supplierId: z.string().uuid().optional(),
-  status: z.string().default('DRAFT'),
-  currency: z.string().default('RUB'),
+  status: z.string().optional().default('DRAFT'),
+  currency: z.string().optional().default('RUB'),
   notes: z.string().optional(),
   dueDate: z.string().optional(),
   items: z.array(orderItemSchema).min(1, 'Добавьте хотя бы один товар'),
@@ -34,7 +34,7 @@ export default function OrderFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -45,7 +45,7 @@ export default function OrderFormPage() {
     setValue,
     watch,
   } = useForm<OrderFormData>({
-    resolver: zodResolver(orderSchema),
+    resolver: zodResolver(orderSchema) as any,
     defaultValues: {
       status: 'DRAFT',
       currency: 'RUB',
@@ -109,6 +109,10 @@ export default function OrderFormPage() {
       success(isEdit ? 'Заказ обновлён' : 'Заказ создан');
       navigate('/orders');
     },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении заказа';
+      showError(errorMessage);
+    },
   });
 
   const onSubmit = (data: OrderFormData) => {
@@ -148,7 +152,7 @@ export default function OrderFormPage() {
         {isEdit ? 'Редактировать заказ' : 'Создать заказ'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="card">
             <h2 className="text-xl font-semibold mb-4">Основная информация</h2>

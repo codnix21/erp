@@ -4,17 +4,24 @@ import logger from '../config/logger';
 
 export class ImportService {
   async importProductsFromExcel(
-    fileBuffer: Buffer,
+    fileBuffer: Buffer | ArrayBuffer,
     companyId: string,
-    userId: string
+    _userId: string
   ) {
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer);
+    // Преобразуем в правильный тип Buffer для ExcelJS
+    let buffer: Buffer;
+    if (Buffer.isBuffer(fileBuffer)) {
+      buffer = fileBuffer;
+    } else {
+      buffer = Buffer.from(new Uint8Array(fileBuffer)) as Buffer;
+    }
+    await workbook.xlsx.load(buffer as any);
 
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) throw new Error('Worksheet not found');
 
-    const products = [];
+    const products: any[] = [];
     let rowNumber = 2; // Пропускаем заголовок
 
     worksheet.eachRow((row, rowIndex) => {
@@ -70,7 +77,6 @@ export class ImportService {
               data: {
                 name: productData.categoryName,
                 companyId,
-                createdById: userId,
               },
             });
             categoryId = newCategory.id;
@@ -106,7 +112,6 @@ export class ImportService {
             taxRate: productData.taxRate,
             unit: productData.unit,
             isService: productData.isService,
-            createdById: userId,
           },
         });
 

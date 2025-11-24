@@ -74,7 +74,10 @@ export class DashboardService {
 
       // Расчет общей выручки
       const totalRevenue = completedOrders.reduce(
-        (sum, order) => sum + Number(order.totalAmount || 0),
+        (sum, order) => {
+          const amount = order.totalAmount;
+          return sum + (amount ? Number(amount) : 0);
+        },
         0
       );
 
@@ -91,7 +94,11 @@ export class DashboardService {
       });
 
       const unpaidAmount = unpaidInvoicesData.reduce(
-        (sum, invoice) => sum + (Number(invoice.totalAmount) - Number(invoice.paidAmount)),
+        (sum, invoice) => {
+          const total = invoice.totalAmount ? Number(invoice.totalAmount) : 0;
+          const paid = invoice.paidAmount ? Number(invoice.paidAmount) : 0;
+          return sum + (total - paid);
+        },
         0
       );
 
@@ -122,6 +129,12 @@ export class DashboardService {
         },
       });
 
+      // Преобразуем Decimal в Number для сериализации
+      const recentOrdersSerialized = recentOrders.map((order) => ({
+        ...order,
+        totalAmount: order.totalAmount ? Number(order.totalAmount) : 0,
+      }));
+
       return {
         stats: {
           orders: ordersCount,
@@ -136,7 +149,7 @@ export class DashboardService {
           revenue: totalRevenue,
           unpaidAmount,
         },
-        recentOrders,
+        recentOrders: recentOrdersSerialized,
       };
     } catch (error) {
       logger.error('Error fetching dashboard stats', { error, companyId });

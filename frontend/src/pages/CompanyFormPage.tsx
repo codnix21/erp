@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
 import api from '../services/api';
+import { useNotifications } from '../context/NotificationContext';
 
 const companySchema = z.object({
   name: z.string().min(1, 'Название обязательно'),
@@ -16,7 +17,7 @@ const companySchema = z.object({
   email: z.string().email('Неверный email').optional().or(z.literal('')),
   defaultCurrency: z.string().min(1, 'Валюта обязательна'),
   taxRate: z.string().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().optional().default(true),
 });
 
 type CompanyFormData = z.infer<typeof companySchema>;
@@ -25,6 +26,7 @@ export default function CompanyFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -33,7 +35,7 @@ export default function CompanyFormPage() {
     formState: { errors },
     setValue,
   } = useForm<CompanyFormData>({
-    resolver: zodResolver(companySchema),
+    resolver: zodResolver(companySchema) as any,
     defaultValues: {
       defaultCurrency: 'RUB',
       taxRate: '20',
@@ -78,11 +80,12 @@ export default function CompanyFormPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
-      alert(isEdit ? 'Компания обновлена' : 'Компания создана');
+      success(isEdit ? 'Компания обновлена' : 'Компания создана');
       navigate('/companies');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error?.message || 'Ошибка при сохранении');
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении компании';
+      showError(errorMessage);
     },
   });
 
@@ -108,7 +111,7 @@ export default function CompanyFormPage() {
         {isEdit ? 'Редактировать компанию' : 'Создать компанию'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

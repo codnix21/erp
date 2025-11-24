@@ -24,7 +24,7 @@ export class ProductController {
       }
 
       const product = await this.productService.createProduct(
-        body,
+        body.body,
         req.user.companyId,
         req.user.id
       );

@@ -4,6 +4,7 @@ import api from '../services/api';
 import { Package, Warehouse, Search, Plus, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuthStore } from '../store/authStore';
 
 interface StockItem {
   warehouseId: string;
@@ -13,7 +14,8 @@ interface StockItem {
   quantity: number | string;
   reserved: number | string;
   available: number | string;
-  lastMovement: string | Date;
+  lastMovementAt?: string | Date | null;
+  lastMovement?: string | Date | null;
 }
 
 export default function StockPage() {
@@ -21,6 +23,7 @@ export default function StockPage() {
   const [search, setSearch] = useState('');
   const queryClient = useQueryClient();
   const { success, error: showError } = useNotifications();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data: warehousesData } = useQuery({
     queryKey: ['warehouses'],
@@ -38,6 +41,7 @@ export default function StockPage() {
       });
       return response.data;
     },
+    enabled: isAuthenticated && !!accessToken,
   });
 
   const recalculateMutation = useMutation({
@@ -73,7 +77,16 @@ export default function StockPage() {
   }
 
   const warehouses = warehousesData?.data || [];
-  let stock: StockItem[] = stockData?.data || [];
+  let stock: StockItem[] = [];
+  if (stockData) {
+    if (stockData.success && Array.isArray(stockData.data)) {
+      stock = stockData.data;
+    } else if (Array.isArray(stockData.data)) {
+      stock = stockData.data;
+    } else if (Array.isArray(stockData)) {
+      stock = stockData;
+    }
+  }
 
   if (search) {
     stock = stock.filter(
@@ -185,7 +198,38 @@ export default function StockPage() {
                     {Number(item.available).toLocaleString('ru-RU')} {item.product.unit}
                   </td>
                   <td className="text-sm text-gray-600">
-                    {new Date(item.lastMovement).toLocaleDateString('ru-RU')}
+                    {(() => {
+                      const dateValue = item.lastMovementAt || item.lastMovement;
+                      if (dateValue === null || dateValue === undefined || dateValue === '') {
+                        return '-';
+                      }
+                      
+                      try {
+                        let date: Date;
+                        
+                        if (dateValue instanceof Date) {
+                          date = dateValue;
+                        } else if (typeof dateValue === 'string' || typeof dateValue === 'number') {
+                          date = new Date(dateValue);
+                        } else if (dateValue && typeof dateValue === 'object' && 'getTime' in dateValue) {
+                          date = new Date(dateValue);
+                        } else {
+                          return '-';
+                        }
+                        
+                        if (isNaN(date.getTime())) {
+                          return '-';
+                        }
+                        
+                        return date.toLocaleDateString('ru-RU', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                        });
+                      } catch (error) {
+                        return '-';
+                      }
+                    })()}
                   </td>
                 </tr>
               ))

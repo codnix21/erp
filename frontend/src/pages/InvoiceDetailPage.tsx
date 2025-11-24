@@ -240,10 +240,10 @@ export default function InvoiceDetailPage() {
             </div>
           )}
 
-          {invoice.notes && (
+          {(invoice as any).notes && (
             <div className="card mt-6">
               <h2 className="text-xl font-semibold mb-4">Примечания</h2>
-              <p className="text-gray-700">{invoice.notes}</p>
+              <p className="text-gray-700">{(invoice as any).notes}</p>
             </div>
           )}
         </div>

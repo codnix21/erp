@@ -15,7 +15,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const { isAuthenticated, accessToken } = useAuthStore();
+  const { isAuthenticated, accessToken, user } = useAuthStore();
   const { hasPermission } = usePermissions();
 
   // Один запрос вместо 5 - значительно быстрее!

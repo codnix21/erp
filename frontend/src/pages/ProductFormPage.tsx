@@ -15,11 +15,11 @@ const productSchema = z.object({
   sku: z.string().optional(),
   description: z.string().optional(),
   categoryId: z.string().uuid().optional(),
-  unit: z.string().default('шт'),
+  unit: z.string().optional().default('шт'),
   price: z.number().min(0, 'Цена должна быть положительной'),
-  currency: z.string().default('RUB'),
-  taxRate: z.number().min(0).max(100).default(20),
-  isService: z.boolean().default(false),
+  currency: z.string().optional().default('RUB'),
+  taxRate: z.number().min(0).max(100).optional().default(20),
+  isService: z.boolean().optional().default(false),
 });
 
 type ProductFormData = z.infer<typeof productSchema>;
@@ -28,7 +28,7 @@ export default function ProductFormPage() {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { success } = useNotifications();
+  const { success, error: showError } = useNotifications();
   const isEdit = !!id;
 
   const {
@@ -38,7 +38,7 @@ export default function ProductFormPage() {
     setValue,
     watch,
   } = useForm<ProductFormData>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: {
       unit: 'шт',
       price: 0,
@@ -81,6 +81,10 @@ export default function ProductFormPage() {
       success(isEdit ? 'Товар обновлён' : 'Товар создан');
       navigate('/products');
     },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при сохранении товара';
+      showError(errorMessage);
+    },
   });
 
   const onSubmit = (data: ProductFormData) => {
@@ -105,7 +109,7 @@ export default function ProductFormPage() {
         {isEdit ? 'Редактировать товар' : 'Создать товар'}
       </h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="card max-w-2xl">
+      <form onSubmit={handleSubmit(onSubmit as any)} className="card max-w-2xl">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

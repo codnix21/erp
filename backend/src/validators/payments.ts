@@ -27,8 +27,8 @@ export const updatePaymentSchema = z.object({
 
 export const getPaymentsSchema = z.object({
   query: z.object({
-    page: z.string().transform(Number).default('1'),
-    limit: z.string().transform(Number).default('20'),
+    page: z.string().default('1').transform((val): number => Number(val)),
+    limit: z.string().default('20').transform((val): number => Number(val)),
     invoiceId: z.string().uuid().optional(),
     paymentDateFrom: z.string().datetime().optional(),
     paymentDateTo: z.string().datetime().optional(),

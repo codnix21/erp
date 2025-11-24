@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+import { setNotificationHandler } from '../utils/notifications';
 
 interface Notification {
   id: string;
@@ -38,6 +39,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const error = useCallback((message: string) => show(message, 'error'), [show]);
   const warning = useCallback((message: string) => show(message, 'warning'), [show]);
   const info = useCallback((message: string) => show(message, 'info'), [show]);
+
+  // Регистрируем обработчики для использования вне React компонентов
+  useEffect(() => {
+    setNotificationHandler({ error, success, warning, info });
+    return () => {
+      setNotificationHandler(null);
+    };
+  }, [error, success, warning, info]);
 
   return (
     <NotificationContext.Provider

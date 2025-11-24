@@ -22,15 +22,15 @@ export const updateCompanySchema = z.object({
     email: z.string().email().optional(),
     defaultCurrency: z.string().optional(),
     taxRate: z.number().min(0).max(100).optional(),
-    settings: z.record(z.any()).optional(),
+    settings: z.record(z.string(), z.any()).optional(),
     isActive: z.boolean().optional(),
   }),
 });
 
 export const getCompaniesSchema = z.object({
   query: z.object({
-    page: z.string().transform(Number).default('1'),
-    limit: z.string().transform(Number).default('20'),
+    page: z.string().default('1').transform((val): number => Number(val)),
+    limit: z.string().default('20').transform((val): number => Number(val)),
     search: z.string().optional(),
   }),
 });

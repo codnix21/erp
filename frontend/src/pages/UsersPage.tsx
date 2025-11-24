@@ -5,6 +5,7 @@ import { userService, User } from '../services/userService';
 import { Plus, Search, User as UserIcon, Trash2 } from 'lucide-react';
 import { usePermissions } from '../hooks/usePermissions';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuthStore } from '../store/authStore';
 
 const roleLabels: Record<string, string> = {
   Admin: 'Администратор',
@@ -19,10 +20,12 @@ export default function UsersPage() {
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const { success, error: showError } = useNotifications();
+  const { isAuthenticated, accessToken } = useAuthStore();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['users', page, search],
     queryFn: () => userService.getAll({ page, limit: 20, search: search || undefined }),
+    enabled: isAuthenticated && !!accessToken,
   });
 
   const deleteMutation = useMutation({
@@ -49,10 +52,22 @@ export default function UsersPage() {
   }
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Ошибка загрузки пользователей</div>;
+    const errorMessage = (error as any)?.response?.data?.error?.message || (error as any)?.message || 'Ошибка загрузки пользователей';
+    return (
+      <div className="card text-center py-8">
+        <div className="text-red-600 font-medium mb-2">Ошибка загрузки пользователей</div>
+        <div className="text-sm text-gray-500">{errorMessage}</div>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-secondary text-sm"
+        >
+          Обновить страницу
+        </button>
+      </div>
+    );
   }
 
-  const users = data?.data || [];
+  const users = (data?.success ? data.data : data?.data) || [];
   const meta = data?.meta;
 
   return (

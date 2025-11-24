@@ -1,5 +1,4 @@
 import prisma from '../config/database';
-import { Decimal } from '@prisma/client/runtime/library';
 
 interface ReportFilters {
   startDate?: string;

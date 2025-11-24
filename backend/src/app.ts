@@ -48,8 +48,60 @@ async function registerPlugins() {
   // Helmet для безопасности
   await app.register(helmet);
 
-  // Compression для оптимизации ответов
-  await app.register(require('@fastify/compress'));
+  // Отключаем кэширование для API ответов (устанавливаем заголовки до отправки)
+  app.addHook('preHandler', async (_request, reply) => {
+    reply.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    reply.header('Pragma', 'no-cache');
+    reply.header('Expires', '0');
+  });
+
+  // Преобразуем Decimal в Number и Date в строки перед сериализацией
+  app.addHook('preSerialization', async (_request, _reply, payload) => {
+    if (payload === null || payload === undefined) {
+      return payload;
+    }
+    
+    // Преобразуем Decimal в Number и Date в ISO строки для сериализации
+    const transformValue = (obj: any): any => {
+      if (obj === null || obj === undefined) {
+        return obj;
+      }
+      
+      // Проверяем, является ли объект Date
+      if (obj instanceof Date) {
+        return obj.toISOString();
+      }
+      
+      // Проверяем, является ли объект Decimal (Prisma.Decimal)
+      if (obj.constructor && (obj.constructor.name === 'Decimal' || typeof obj.toNumber === 'function')) {
+        return Number(obj);
+      }
+      
+      if (Array.isArray(obj)) {
+        return obj.map(transformValue);
+      }
+      
+      if (typeof obj === 'object') {
+        const result: any = {};
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            result[key] = transformValue(obj[key]);
+          }
+        }
+        return result;
+      }
+      
+      return obj;
+    };
+    
+    try {
+      const transformed = transformValue(payload);
+      return transformed;
+    } catch (error) {
+      logger.error('Error transforming payload', { error, payloadType: typeof payload });
+      return payload;
+    }
+  });
 
   // Rate limiting с заголовками
   await app.register(rateLimit, {
@@ -68,7 +120,8 @@ async function registerPlugins() {
   });
 
   // Multipart для загрузки файлов
-  await app.register(require('@fastify/multipart'), {
+  const multipart = (await import('@fastify/multipart')).default;
+  await app.register(multipart, {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB
     },
@@ -135,7 +188,7 @@ app.addHook('onRequest', async (request, reply) => {
 });
 
 // Health check с проверкой БД
-app.get('/health', async (request, reply) => {
+app.get('/health', async (_request, reply) => {
   const health = {
     status: 'ok',
     timestamp: new Date().toISOString(),
@@ -162,15 +215,15 @@ app.get('/health', async (request, reply) => {
 });
 
 // Обработка ошибок
-app.setErrorHandler((error, request, reply) => {
+app.setErrorHandler((error: any, request, reply) => {
   const requestId = (request as any).requestId || 'unknown';
   const statusCode = error.statusCode || 500;
   const isProduction = process.env.NODE_ENV === 'production';
 
   logger.error('Request error', {
     requestId,
-    error: error.message,
-    stack: isProduction ? undefined : error.stack,
+    error: error?.message || String(error),
+    stack: isProduction ? undefined : error?.stack,
     url: request.url,
     method: request.method,
     statusCode,
@@ -179,10 +232,10 @@ app.setErrorHandler((error, request, reply) => {
   reply.status(statusCode).send({
     success: false,
     error: {
-      code: error.code || 'INTERNAL_ERROR',
+      code: error?.code || 'INTERNAL_ERROR',
       message: isProduction && statusCode === 500 
         ? 'Internal server error' 
-        : error.message || 'Internal server error',
+        : error?.message || 'Internal server error',
       requestId,
     },
   });

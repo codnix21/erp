@@ -4,6 +4,7 @@ import { ArrowLeft, Edit, Trash2, Building2, Mail, Phone, MapPin } from 'lucide-
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
 import api from '../services/api';
+import { useNotifications } from '../context/NotificationContext';
 
 interface Company {
   id: string;
@@ -30,6 +31,7 @@ export default function CompanyDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
+  const { success, error: showError } = useNotifications();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['company', id],
@@ -46,10 +48,12 @@ export default function CompanyDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['companies'] });
+      success('Компания удалена');
       navigate('/companies');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error?.message || 'Ошибка при удалении компании');
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при удалении компании';
+      showError(errorMessage);
     },
   });
 

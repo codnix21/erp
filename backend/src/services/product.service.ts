@@ -2,7 +2,8 @@ import prisma from '../config/database';
 import { CreateProductInput, UpdateProductInput } from '../validators/products';
 import logger from '../config/logger';
 import { createAuditLog } from '../utils/audit';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+const { Decimal } = Prisma;
 
 export class ProductService {
   async createProduct(data: CreateProductInput, companyId: string, userId: string) {

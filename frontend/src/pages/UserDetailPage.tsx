@@ -4,6 +4,7 @@ import { userService } from '../services/userService';
 import { ArrowLeft, Edit, Trash2, Mail, User as UserIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePermissions } from '../hooks/usePermissions';
+import { useNotifications } from '../context/NotificationContext';
 
 const roleLabels: Record<string, string> = {
   Admin: 'Администратор',
@@ -17,6 +18,7 @@ export default function UserDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { hasPermission } = usePermissions();
+  const { success, error: showError } = useNotifications();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['user', id],
@@ -30,10 +32,12 @@ export default function UserDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
+      success('Пользователь удалён');
       navigate('/users');
     },
     onError: (error: any) => {
-      alert(error.response?.data?.error?.message || 'Ошибка при удалении пользователя');
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Ошибка при удалении пользователя';
+      showError(errorMessage);
     },
   });
 
